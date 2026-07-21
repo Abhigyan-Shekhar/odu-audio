@@ -29,26 +29,22 @@
 # Utilities
 # VAD & Diarization
 # emotion2vec  # install from GitHub: https://github.com/ddlBoJack/emotion2vec
+# faster-whisper>=1.0.0  # optional ASR backend for Person 2 lexical branch
+# seamless-communication  # optional MuTox backend; install per upstream instructions
 # pyannote.audio>=3.0.0  # requires HuggingFace token
 # silero-vad>=4.0.0  # install from GitHub
 click>=8.1.0  # CLI
 cryptography>=41.0.0
 flatbuffers==25.12.19
-hashlib  # built-in
 huggingface-hub>=0.16.0
 librosa>=0.10.0
 lightgbm>=4.0.0
 numpy>=1.24.0,<2.0.0
-onnxruntime==1.27.0
+onnxruntime>=1.16.1,<1.24
 opensmile>=2.5.0  # eGeMAPS
 pandas>=2.0.0
 protobuf==7.35.1
-pyannote-audio==4.0.7
-pyannote-core==6.0.1
-pyannote-database==6.1.1
-pyannote-metrics==4.1
-pyannote-pipeline==4.0.0
-pyannoteai-sdk==0.4.0
+pyannote.audio>=3.1.0,<4.0.0  # optional diarization backend; requires HF token/model terms for real inference
 pyarrow>=12.0.0  # for parquet
 python-dotenv>=1.0.0
 pyyaml>=6.0
@@ -59,7 +55,7 @@ sounddevice>=0.4.6  # microphone capture
 soundfile>=0.12.1
 tensorflow-hub>=0.14.0
 tensorflow>=2.13.0  # YAMNet
-torch>=2.0.0
-torchaudio>=2.0.0
+torch>=2.0.0,<2.12.0
+torchaudio>=2.0.0,<2.12.0
 tqdm>=4.65.0
 typing-extensions>=4.7.0

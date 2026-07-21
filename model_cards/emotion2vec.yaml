@@ -1,0 +1,197 @@
+# Model Card: emotion2vec
+
+model_name: "emotion2vec"
+version: "base"
+date: "2024"
+owner: "ddlBoJack/emotion2vec"
+
+model_details:
+  description: |
+    emotion2vec is a self-supervised learning model for speech emotion representation.
+    It provides acoustic affect embeddings, NOT emotion classification.
+    The model learns to represent emotional cues in speech through contrastive learning.
+  
+  architecture: "Transformer-based self-supervised speech model"
+  paper: "https://arxiv.org/abs/2312.15185"
+  repository: "https://github.com/ddlBoJack/emotion2vec"
+  license: "MIT"
+  
+intended_use:
+  primary_uses:
+    - "Extract acoustic affect embeddings from speech"
+    - "Provide features for downstream emotion/affect modeling"
+    - "Research on vocal expression and affective computing"
+  
+  primary_users:
+    - "Researchers in affective computing"
+    - "Developers of emotion-aware systems"
+    - "Clinical researchers (with appropriate oversight)"
+  
+  out_of_scope:
+    - "Autonomous emotion classification for clinical diagnosis"
+    - "Lie detection or deception detection"
+    - "Personality assessment"
+    - "Hiring or employment decisions"
+    - "Immigration or legal proceedings"
+    - "Surveillance or coercive monitoring"
+
+factors:
+  relevant_factors:
+    - "Language and dialect"
+    - "Cultural background and expression norms"
+    - "Physical health and illness"
+    - "Medication effects on vocalization"
+    - "Age and vocal development"
+    - "Neurological differences (autism, Parkinson's, etc.)"
+    - "Pain and physical discomfort"
+    - "Recording quality and microphone characteristics"
+    - "Background noise"
+    - "Speaking style and vocal effort"
+  
+  evaluation_factors:
+    - "Performance varies across languages"
+    - "Performance varies across age groups"
+    - "Performance varies by recording quality"
+    - "Limited evaluation on clinical populations"
+
+metrics:
+  model_performance:
+    - metric: "Emotion recognition accuracy on IEMOCAP"
+      value: "~65-70%"
+      condition: "Downstream classification with linear probe"
+    
+    - metric: "Arousal correlation"
+      value: "~0.6-0.7"
+      condition: "Dimensional emotion prediction"
+    
+    - metric: "Valence correlation"
+      value: "~0.5-0.6"
+      condition: "Dimensional emotion prediction"
+  
+training_data:
+  description: |
+    Trained on large-scale speech datasets using self-supervised learning.
+    Exact training data composition varies by model version.
+  source: "Multiple public speech datasets"
+  preprocessing: "16 kHz audio, standard speech processing"
+  size: "~100K hours (typical for self-supervised speech models)"
+  demographics: "Predominantly English and Chinese speakers; limited demographic diversity"
+
+evaluation_data:
+  description: "Evaluated on standard emotion recognition benchmarks"
+  source: "IEMOCAP, MSP-PODCAST, others"
+  preprocessing: "Standard evaluation protocols"
+  size: "Varies by benchmark"
+
+ethical_considerations:
+  risks:
+    - "Vocal expression ≠ internal emotional state"
+    - "Cultural and linguistic biases in training data"
+    - "May not generalize to clinical populations"
+    - "Embeddings may encode demographic information (age, gender, health status)"
+    - "Potential for misuse in surveillance or coercion"
+    - "May reinforce stereotypes about emotional expression"
+  
+  mitigations:
+    - "Use as feature extractor only, not standalone classifier"
+    - "Require human oversight for clinical applications"
+    - "Document known confounds and limitations"
+    - "Treat embeddings as sensitive/linkable data"
+    - "Regular bias and fairness audits"
+    - "Clear prohibited use documentation"
+
+limitations:
+  known_limitations:
+    - "Trained primarily on acted/elicited emotions, not spontaneous clinical speech"
+    - "Limited representation of clinical populations"
+    - "Performance degrades with poor audio quality"
+    - "May not detect subtle or suppressed emotions"
+    - "Cultural differences in emotional expression not fully captured"
+    - "Confusion between arousal and valence"
+    - "Sensitive to speaking style and vocal effort"
+    - "Cannot distinguish genuine from posed emotion"
+  
+  recommendations:
+    - "Always use with human oversight in clinical settings"
+    - "Validate on target population before deployment"
+    - "Monitor for demographic performance disparities"
+    - "Use embeddings as features, not direct predictions"
+    - "Combine with other modalities and clinical context"
+    - "Regular performance audits on diverse populations"
+    - "Clear communication about limitations to end users"
+
+prohibited_uses:
+  - "Autonomous diagnosis of mental health conditions"
+  - "Suicide risk assessment without human review"
+  - "Treatment decisions without clinician oversight"
+  - "Lie detection or credibility assessment"
+  - "Employment screening or hiring decisions"
+  - "Immigration or asylum determinations"
+  - "Criminal justice risk assessment"
+  - "Coercive monitoring of patients or staff"
+  - "Disciplinary actions based solely on affect scores"
+  - "Insurance or benefits eligibility determination"
+
+quantitative_analyses:
+  results:
+    - dataset: "IEMOCAP"
+      metric: "Weighted accuracy"
+      value: "~68%"
+      note: "4-class emotion recognition with linear probe"
+    
+    - dataset: "MSP-PODCAST"
+      metric: "Arousal CCC"
+      value: "~0.65"
+      note: "Concordance correlation coefficient"
+    
+    - dataset: "MSP-PODCAST"
+      metric: "Valence CCC"
+      value: "~0.55"
+      note: "Concordance correlation coefficient"
+
+caveats_and_recommendations:
+  caveats:
+    - "Model provides acoustic affect representation, NOT emotion diagnosis"
+    - "Vocal expression is influenced by many non-emotional factors"
+    - "Performance on clinical populations may differ from research benchmarks"
+    - "Embeddings should be treated as sensitive, linkable biometric data"
+    - "No guarantee of fairness across demographic groups"
+    - "Requires careful validation before clinical deployment"
+  
+  recommendations:
+    - "Use in research settings with IRB approval"
+    - "Validate extensively on target clinical population"
+    - "Monitor for demographic disparities"
+    - "Combine with clinical context and other data sources"
+    - "Provide clinician training on limitations"
+    - "Implement human-in-the-loop review for all decisions"
+    - "Regular ethical and fairness audits"
+    - "Clear communication to patients about use"
+
+deployment_notes:
+  window_config:
+    window_seconds: 3.0
+    hop_seconds: 1.0
+    pooling: "mean"
+  
+  inference_latency:
+    typical: "1-3 seconds"
+    note: "Window-dependent; not suitable for <200ms latency applications"
+  
+  hardware:
+    cpu: "~100-200ms per 3s window"
+    gpu: "~20-50ms per 3s window"
+  
+  reproducibility:
+    numerical_tolerance: 1e-5
+    note: "Embeddings should be numerically reproducible within tolerance"
+
+privacy_considerations:
+  - "Embeddings may encode speaker identity"
+  - "Embeddings may encode health status"
+  - "Treat as biometric data under GDPR"
+  - "Requires legal basis for processing"
+  - "Consider data protection impact assessment (DPIA)"
+  - "Implement appropriate technical and organizational measures"
+
+last_updated: "2024-01-15"

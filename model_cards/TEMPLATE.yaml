@@ -1,0 +1,71 @@
+# Model Card Template
+# Based on Model Cards for Model Reporting (Mitchell et al., 2019)
+
+model_name: ""
+version: ""
+date: ""
+owner: ""
+
+model_details:
+  description: ""
+  architecture: ""
+  paper: ""
+  repository: ""
+  license: ""
+  
+intended_use:
+  primary_uses:
+    - ""
+  primary_users:
+    - ""
+  out_of_scope:
+    - ""
+
+factors:
+  relevant_factors:
+    - ""
+  evaluation_factors:
+    - ""
+
+metrics:
+  model_performance:
+    - metric: ""
+      value: ""
+      condition: ""
+  
+training_data:
+  description: ""
+  source: ""
+  preprocessing: ""
+  size: ""
+  demographics: ""
+
+evaluation_data:
+  description: ""
+  source: ""
+  preprocessing: ""
+  size: ""
+
+ethical_considerations:
+  risks: []
+  mitigations: []
+  
+limitations:
+  known_limitations: []
+  recommendations: []
+
+prohibited_uses:
+  - "Autonomous diagnosis without clinician review"
+  - "Suicide risk decisions without human oversight"
+  - "Treatment denial or rationing"
+  - "Coercive monitoring or surveillance"
+  - "Staff or patient disciplinary actions"
+  - "Immigration or legal proceedings"
+  - "Employment decisions"
+
+quantitative_analyses:
+  results: []
+
+caveats_and_recommendations:
+  caveats: []
+  recommendations: []

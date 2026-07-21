@@ -4,6 +4,7 @@ Feature record schema for acoustic features output.
 This schema defines the structure of acoustic_features.parquet.
 """
 
+import json
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -175,15 +176,17 @@ class AcousticFeatureRecord:
             "voiced_ratio": self.voiced_ratio,
             "overlap_probability": self.overlap_probability,
             "egemaps": self.egemaps,
-            "yamnet_event_scores": self.yamnet_event_scores,
+            # Dict columns serialized as JSON strings to avoid PyArrow
+            # zero-field struct errors when the dict is empty.
+            "yamnet_event_scores": json.dumps(self.yamnet_event_scores),
             "emotion_embedding": self.emotion_embedding,
             "snr_db": self.snr_db,
             "clipping_ratio": self.clipping_ratio,
             "dropout_ratio": self.dropout_ratio,
             "quality_status": self.quality_status,
-            "extractor_versions": self.extractor_versions,
+            "extractor_versions": json.dumps(self.extractor_versions),
             "config_hash": self.config_hash,
-            "model_hashes": self.model_hashes,
+            "model_hashes": json.dumps(self.model_hashes),
         }
 
     @classmethod

@@ -316,13 +316,14 @@ def test_estimate_snr_short():
 
 def test_wav_to_parquet_basic(temp_dir):
     wav_path = os.path.join(temp_dir, "input.wav")
-    parquet_path = os.path.join(temp_dir, "output.parquet")
+    output_dir = os.path.join(temp_dir, "output")
     generate_wav(wav_path, sample_rate=16000, duration=3.0)
 
     # Pass snr_min_db=0.0 config to prevent LOW_SNR status for pure synthetic wave
     converter = WavToParquetConverter(config={"quality": {"snr_min_db": 0.0}})
-    converter.process(wav_path, parquet_path)
+    converter.process(wav_path, output_dir)
 
+    parquet_path = os.path.join(output_dir, "acoustic_features.parquet")
     assert os.path.exists(parquet_path)
     df = pd.read_parquet(parquet_path)
 
@@ -337,13 +338,13 @@ def test_wav_to_parquet_basic(temp_dir):
 
 def test_sample_rate_8khz(temp_dir):
     wav_path = os.path.join(temp_dir, "input_8k.wav")
-    parquet_path = os.path.join(temp_dir, "output.parquet")
+    output_dir = os.path.join(temp_dir, "output_8k")
     generate_wav(wav_path, sample_rate=8000, duration=2.0)
 
     converter = WavToParquetConverter()
-    converter.process(wav_path, parquet_path)
+    converter.process(wav_path, output_dir)
 
-    df = pd.read_parquet(parquet_path)
+    df = pd.read_parquet(os.path.join(output_dir, "acoustic_features.parquet"))
     assert len(df) > 0
     # window_start_ms should map correctly
     assert df["window_start_ms"].iloc[0] == 0
@@ -353,49 +354,49 @@ def test_sample_rates_cd_and_pro(temp_dir):
     # CD quality (44.1 kHz) and Pro (48 kHz)
     for sr in [44100, 48000]:
         wav_path = os.path.join(temp_dir, f"input_{sr}.wav")
-        parquet_path = os.path.join(temp_dir, f"output_{sr}.parquet")
+        output_dir = os.path.join(temp_dir, f"output_{sr}")
         generate_wav(wav_path, sample_rate=sr, duration=2.5)
 
         converter = WavToParquetConverter()
-        converter.process(wav_path, parquet_path)
-        assert os.path.exists(parquet_path)
+        converter.process(wav_path, output_dir)
+        assert os.path.exists(os.path.join(output_dir, "acoustic_features.parquet"))
 
 
 def test_wav_to_parquet_stereo(temp_dir):
     wav_path = os.path.join(temp_dir, "stereo.wav")
-    parquet_path = os.path.join(temp_dir, "output.parquet")
+    output_dir = os.path.join(temp_dir, "output_stereo")
     generate_wav(wav_path, sample_rate=16000, n_channels=2, duration=2.0)
 
     converter = WavToParquetConverter()
-    converter.process(wav_path, parquet_path)
+    converter.process(wav_path, output_dir)
 
-    df = pd.read_parquet(parquet_path)
+    df = pd.read_parquet(os.path.join(output_dir, "acoustic_features.parquet"))
     assert len(df) > 0
 
 
 def test_wav_to_parquet_clipped(temp_dir):
     wav_path = os.path.join(temp_dir, "clipped.wav")
-    parquet_path = os.path.join(temp_dir, "output.parquet")
+    output_dir = os.path.join(temp_dir, "output_clipped")
     # Generate high amplitude to trigger clipping status
     generate_wav(wav_path, sample_rate=16000, duration=2.0, clipping=True)
 
     converter = WavToParquetConverter()
-    converter.process(wav_path, parquet_path)
+    converter.process(wav_path, output_dir)
 
-    df = pd.read_parquet(parquet_path)
+    df = pd.read_parquet(os.path.join(output_dir, "acoustic_features.parquet"))
     assert df["quality_status"].iloc[0] == "CLIPPED"
     assert df["clipping_ratio"].iloc[0] > 0.05
 
 
 def test_wav_to_parquet_silent_dropout(temp_dir):
     wav_path = os.path.join(temp_dir, "silent.wav")
-    parquet_path = os.path.join(temp_dir, "output.parquet")
+    output_dir = os.path.join(temp_dir, "output_silent")
     generate_wav(wav_path, sample_rate=16000, duration=2.0, silence=True)
 
     converter = WavToParquetConverter()
-    converter.process(wav_path, parquet_path)
+    converter.process(wav_path, output_dir)
 
-    df = pd.read_parquet(parquet_path)
+    df = pd.read_parquet(os.path.join(output_dir, "acoustic_features.parquet"))
     assert df["quality_status"].iloc[0] == "DROPOUT"
     assert df["dropout_ratio"].iloc[0] > 0.10
 
@@ -418,13 +419,13 @@ def test_nan_infinity_prevention(temp_dir, monkeypatch):
 
 def test_timestamp_and_sequence_continuity(temp_dir):
     wav_path = os.path.join(temp_dir, "continuity.wav")
-    parquet_path = os.path.join(temp_dir, "output.parquet")
+    output_dir = os.path.join(temp_dir, "output_cont")
     generate_wav(wav_path, sample_rate=16000, duration=4.0)
 
     converter = WavToParquetConverter()
-    converter.process(wav_path, parquet_path)
+    converter.process(wav_path, output_dir)
 
-    df = pd.read_parquet(parquet_path)
+    df = pd.read_parquet(os.path.join(output_dir, "acoustic_features.parquet"))
 
     # Check sequence increments by 1
     sequences = df.index.tolist()
@@ -436,7 +437,7 @@ def test_timestamp_and_sequence_continuity(temp_dir):
 
 def test_atomic_write_safety(temp_dir):
     wav_path = os.path.join(temp_dir, "input.wav")
-    parquet_path = os.path.join(temp_dir, "output.parquet")
+    output_dir = os.path.join(temp_dir, "output_atomic")
     generate_wav(wav_path, sample_rate=16000, duration=2.0)
 
     # Force a failure midway by mocking/patching pd.DataFrame.to_parquet
@@ -450,43 +451,44 @@ def test_atomic_write_safety(temp_dir):
     converter = WavToParquetConverter()
     try:
         with pytest.raises(RuntimeError):
-            converter.process(wav_path, parquet_path)
-        # Verify no partial output is left behind
-        assert not os.path.exists(parquet_path)
+            converter.process(wav_path, output_dir)
+        # Verify no partial acoustic_features output is left behind
+        assert not os.path.exists(os.path.join(output_dir, "acoustic_features.parquet"))
     finally:
         pd.DataFrame.to_parquet = old_to_parquet
 
 
 def test_overwrite_existing_output(temp_dir):
     wav_path = os.path.join(temp_dir, "input.wav")
-    parquet_path = os.path.join(temp_dir, "output.parquet")
+    output_dir = os.path.join(temp_dir, "output_overwrite")
     generate_wav(wav_path, sample_rate=16000, duration=2.0)
 
-    # Create pre-existing file
-    with open(parquet_path, "w") as f:
+    # Create pre-existing directory and file
+    os.makedirs(output_dir, exist_ok=True)
+    with open(os.path.join(output_dir, "acoustic_features.parquet"), "w") as f:
         f.write("existing content")
 
     converter = WavToParquetConverter()
-    converter.process(wav_path, parquet_path)
+    converter.process(wav_path, output_dir)
 
     # Pre-existing file is overwritten successfully
-    df = pd.read_parquet(parquet_path)
+    df = pd.read_parquet(os.path.join(output_dir, "acoustic_features.parquet"))
     assert len(df) > 0
 
 
 def test_reproducibility_determinism(temp_dir):
     wav_path = os.path.join(temp_dir, "input.wav")
-    parquet_path1 = os.path.join(temp_dir, "output1.parquet")
-    parquet_path2 = os.path.join(temp_dir, "output2.parquet")
+    output_dir1 = os.path.join(temp_dir, "output1")
+    output_dir2 = os.path.join(temp_dir, "output2")
 
     generate_wav(wav_path, sample_rate=16000, duration=3.0)
 
     converter = WavToParquetConverter()
-    converter.process(wav_path, parquet_path1)
-    converter.process(wav_path, parquet_path2)
+    converter.process(wav_path, output_dir1)
+    converter.process(wav_path, output_dir2)
 
-    df1 = pd.read_parquet(parquet_path1)
-    df2 = pd.read_parquet(parquet_path2)
+    df1 = pd.read_parquet(os.path.join(output_dir1, "acoustic_features.parquet"))
+    df2 = pd.read_parquet(os.path.join(output_dir2, "acoustic_features.parquet"))
 
     # Drop random UUIDs for deterministic comparison
     df1_clean = df1.drop(columns=["session_id", "stream_id"])
@@ -510,23 +512,23 @@ def test_cli_help():
 
 def test_cli_success(temp_dir):
     wav_path = os.path.join(temp_dir, "input.wav")
-    parquet_path = os.path.join(temp_dir, "output.parquet")
+    output_dir = os.path.join(temp_dir, "output")
     generate_wav(wav_path, sample_rate=16000, duration=2.0)
 
     runner = CliRunner()
     result = runner.invoke(
-        wav_to_parquet, ["--input", wav_path, "--output", parquet_path]
+        wav_to_parquet, ["--input", wav_path, "--output-dir", output_dir]
     )
 
     assert result.exit_code == 0
-    assert os.path.exists(parquet_path)
+    assert os.path.exists(os.path.join(output_dir, "acoustic_features.parquet"))
     assert "Successfully wrote feature record dataset" in result.output
 
 
 def test_cli_missing_input(temp_dir):
-    parquet_path = os.path.join(temp_dir, "output.parquet")
+    output_dir = os.path.join(temp_dir, "output")
     runner = CliRunner()
     result = runner.invoke(
-        wav_to_parquet, ["--input", "non_existent.wav", "--output", parquet_path]
+        wav_to_parquet, ["--input", "non_existent.wav", "--output-dir", output_dir]
     )
     assert result.exit_code != 0

@@ -120,6 +120,7 @@ graph TD
     M5 --> M6[Milestone 6: Diarization & Attribution]
     M6 --> M7[Milestone 7: Graceful Degradation Load tests]
     M7 --> M8[Milestone 8: Downstream Training Baselines]
+    M8 --> M9[Milestone 9: Formal Reviews]
 ```
 
 * `[x]` **Milestone 0**: Engineering Baseline (Week 1)
@@ -131,6 +132,7 @@ graph TD
 * `[x]` **Milestone 6**: Diarization & Attribution (Weeks 10-12)
 * `[x]` **Milestone 7**: Graceful Degradation Validation (Week 13)
 * `[x]` **Milestone 8**: Training Pipeline Baselines (Weeks 14-16)
+* `[x]` **Milestone 9**: Formal Reviews (Weeks 13-14)
 
 ---
 

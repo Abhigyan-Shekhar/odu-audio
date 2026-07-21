@@ -9,6 +9,8 @@ import threading
 import time
 from typing import Any, Dict, Iterator, Optional
 
+import numpy as np
+
 from src.audio_pipeline.capture.audio_chunk import AudioChunk
 from src.audio_pipeline.capture.audio_source import AudioSource
 from src.audio_pipeline.capture.bounded_queue import BoundedQueue
@@ -19,6 +21,9 @@ from src.audio_pipeline.quality.clipping import detect_clipping
 from src.audio_pipeline.quality.dropout import detect_dropout
 from src.audio_pipeline.quality.snr import estimate_snr
 from src.audio_pipeline.schemas.feature_record import AcousticFeatureRecord
+from src.audio_pipeline.schemas.segment import SpeechSegment
+from src.audio_pipeline.segmentation.endpointer import Endpointer
+from src.audio_pipeline.segmentation.vad_interface import VADInterface
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +31,15 @@ logger = logging.getLogger(__name__)
 class StreamProcessor:
     """
     Coordinates real-time streaming audio capture, preprocessing,
-    and feature/quality extraction in background threads.
+    VAD segmentation, and feature/quality extraction in background threads.
     """
 
-    def __init__(self, source: AudioSource, config: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        source: AudioSource,
+        config: Optional[Dict[str, Any]] = None,
+        vad: Optional[VADInterface] = None,
+    ):
         self.source = source
         self.config = config or {}
 
@@ -53,6 +63,14 @@ class StreamProcessor:
         self.dropout_max_ratio = quality_cfg.get("dropout_max_ratio", 0.10)
         self.snr_min_db = quality_cfg.get("snr_min_db", 10.0)
 
+        # VAD & Segmentation Configuration
+        seg_cfg = self.config.get("segmentation", {})
+        self.vad_model = seg_cfg.get("model", "silero_vad_v4")
+        self.vad_threshold = seg_cfg.get("threshold", 0.5)
+        self.min_speech_duration_ms = seg_cfg.get("min_speech_duration_ms", 250)
+        self.min_silence_duration_ms = seg_cfg.get("min_silence_duration_ms", 500)
+        self.speech_pad_ms = seg_cfg.get("speech_pad_ms", 100)
+
         # Runtime configuration
         runtime_cfg = self.config.get("runtime", {})
         self.queue_capacity = runtime_cfg.get("queue_capacity", 100)
@@ -66,6 +84,32 @@ class StreamProcessor:
         )
         self._ring_buffer: Optional[RingBuffer] = None
         self._resampler: Optional[StreamingResampler] = None
+
+        # VAD state tracking
+        self.speech_segments: list[SpeechSegment] = []
+        self._vad_history: list[tuple[int, float]] = []
+        self._vad_sample_buffer = np.array([], dtype=np.float32)
+        self._vad_sample_counter = 0
+
+        if vad is not None:
+            self._vad = vad
+        else:
+            if self.vad_model == "silero_vad_v4":
+                from src.audio_pipeline.segmentation.silero_vad import SileroVAD
+
+                self._vad = SileroVAD(threshold=self.vad_threshold)
+            else:
+                from src.audio_pipeline.segmentation.dummy_vad import DummyVAD
+
+                self._vad = DummyVAD(default_prob=0.0)
+
+        self._endpointer = Endpointer(
+            threshold=self.vad_threshold,
+            min_speech_duration_ms=self.min_speech_duration_ms,
+            min_silence_duration_ms=self.min_silence_duration_ms,
+            speech_pad_ms=self.speech_pad_ms,
+            sample_rate=16000,
+        )
 
         # Threading state
         self._running = False
@@ -92,6 +136,12 @@ class StreamProcessor:
         self._capture_done = False
         self._process_done = False
         self._stop_event.clear()
+
+        # Reset VAD buffers
+        self.speech_segments = []
+        self._vad_history = []
+        self._vad_sample_buffer = np.array([], dtype=np.float32)
+        self._vad_sample_counter = 0
 
         # Instantiate streaming resampler and ring buffer (using target 16kHz)
         self._resampler = StreamingResampler(
@@ -200,7 +250,41 @@ class StreamProcessor:
                 # 4. Write to RingBuffer
                 self._ring_buffer.write(resampled)
 
-                # 5. Extract features from overlapping windows
+                # 5. Run VAD chunking and endpointing on resampled audio
+                self._vad_sample_buffer = np.concatenate(
+                    [self._vad_sample_buffer, resampled]
+                )
+                while len(self._vad_sample_buffer) >= 512:
+                    vad_chunk = self._vad_sample_buffer[:512]
+                    self._vad_sample_buffer = self._vad_sample_buffer[512:]
+
+                    prob = self._vad.process_chunk(vad_chunk)
+
+                    start_sample = self._vad_sample_counter
+                    end_sample = self._vad_sample_counter + 512
+                    self._vad_sample_counter += 512
+
+                    start_ms = int((start_sample / 16000.0) * 1000)
+                    end_ms = int((end_sample / 16000.0) * 1000)
+
+                    # Record history for windowed average VAD probability
+                    midpoint_ms = (start_ms + end_ms) // 2
+                    self._vad_history.append((midpoint_ms, prob))
+
+                    # Feed to endpointer
+                    seg = self._endpointer.process(
+                        prob=prob,
+                        start_ms=start_ms,
+                        end_ms=end_ms,
+                        start_sample=start_sample,
+                        end_sample=end_sample,
+                        session_id=self._session_id,
+                        stream_id=self._stream_id,
+                    )
+                    if seg is not None and not seg.provisional:
+                        self.speech_segments.append(seg)
+
+                # 6. Extract features from overlapping windows
                 ratio = original_sr / 16000.0
 
                 while self._ring_buffer.get_available_samples() >= window_samples:
@@ -227,35 +311,50 @@ class StreamProcessor:
                     else:
                         quality_status = "OK"
 
-                    # Check and reset ring buffer discontinuity flags
-                    has_disc, disc_reason = (
-                        self._ring_buffer.check_and_reset_discontinuity()
-                    )
-
                     # Map resampled windows back to source WAV sample indices
                     source_start_sample = int(cumulative_resampled_samples * ratio)
                     source_end_sample = int(
                         (cumulative_resampled_samples + window_samples) * ratio
                     )
 
+                    # Calculate windowed VAD metrics
+                    w_start_ms = int((cumulative_resampled_samples / 16000.0) * 1000)
+                    w_end_ms = int(
+                        ((cumulative_resampled_samples + window_samples) / 16000.0)
+                        * 1000
+                    )
+
+                    overlapping = [
+                        p for t, p in self._vad_history if w_start_ms <= t < w_end_ms
+                    ]
+                    if overlapping:
+                        vad_probability_mean = float(np.mean(overlapping))
+                        voiced_ratio = float(
+                            np.sum(np.array(overlapping) >= self.vad_threshold)
+                            / len(overlapping)
+                        )
+                    else:
+                        vad_probability_mean = 0.0
+                        voiced_ratio = 0.0
+
+                    # Prune history to keep memory bounded
+                    self._vad_history = [
+                        (t, p) for t, p in self._vad_history if t >= w_start_ms - 5000
+                    ]
+
                     # Instantiating the dataclass triggers validator checks
                     record = AcousticFeatureRecord(
                         session_id=self._session_id,
                         stream_id=self._stream_id,
-                        window_start_ms=int(
-                            (cumulative_resampled_samples / 16000.0) * 1000
-                        ),
-                        window_end_ms=int(
-                            ((cumulative_resampled_samples + window_samples) / 16000.0)
-                            * 1000
-                        ),
+                        window_start_ms=w_start_ms,
+                        window_end_ms=w_end_ms,
                         source_start_sample=source_start_sample,
                         source_end_sample=source_end_sample,
                         attribution_status="UNKNOWN",
                         patient_probability=None,
                         attribution_method=None,
-                        vad_probability_mean=0.0,
-                        voiced_ratio=0.0,
+                        vad_probability_mean=vad_probability_mean,
+                        voiced_ratio=voiced_ratio,
                         overlap_probability=0.0,
                         egemaps=None,
                         yamnet_event_scores={cls: 0.0 for cls in self.event_classes},
@@ -281,7 +380,43 @@ class StreamProcessor:
                     cumulative_resampled_samples += hop_samples
                     sequence_number += 1
 
-            # 6. Handle final partial window on shutdown/EOF
+            # 7. Process any remaining trailing VAD samples and flush endpointer
+            if len(self._vad_sample_buffer) > 0:
+                pad_size = 512 - len(self._vad_sample_buffer)
+                final_chunk = np.concatenate(
+                    [self._vad_sample_buffer, np.zeros(pad_size, dtype=np.float32)]
+                )
+                prob = self._vad.process_chunk(final_chunk)
+
+                start_sample = self._vad_sample_counter
+                end_sample = self._vad_sample_counter + len(self._vad_sample_buffer)
+                self._vad_sample_counter += len(self._vad_sample_buffer)
+
+                start_ms = int((start_sample / 16000.0) * 1000)
+                end_ms = int((end_sample / 16000.0) * 1000)
+
+                midpoint_ms = (start_ms + end_ms) // 2
+                self._vad_history.append((midpoint_ms, prob))
+
+                seg = self._endpointer.process(
+                    prob=prob,
+                    start_ms=start_ms,
+                    end_ms=end_ms,
+                    start_sample=start_sample,
+                    end_sample=end_sample,
+                    session_id=self._session_id,
+                    stream_id=self._stream_id,
+                )
+                if seg is not None and not seg.provisional:
+                    self.speech_segments.append(seg)
+                self._vad_sample_buffer = np.array([], dtype=np.float32)
+
+            # Flush the endpointer
+            final_seg = self._endpointer.flush(self._session_id, self._stream_id)
+            if final_seg is not None and not final_seg.provisional:
+                self.speech_segments.append(final_seg)
+
+            # 8. Handle final partial window on shutdown/EOF
             available = self._ring_buffer.get_available_samples()
             if available > 0:
                 window_data = self._ring_buffer.peek(available)
@@ -308,23 +443,36 @@ class StreamProcessor:
                         (cumulative_resampled_samples + available) * ratio
                     )
 
+                    w_start_ms = int((cumulative_resampled_samples / 16000.0) * 1000)
+                    w_end_ms = int(
+                        ((cumulative_resampled_samples + available) / 16000.0) * 1000
+                    )
+
+                    overlapping = [
+                        p for t, p in self._vad_history if w_start_ms <= t < w_end_ms
+                    ]
+                    if overlapping:
+                        vad_probability_mean = float(np.mean(overlapping))
+                        voiced_ratio = float(
+                            np.sum(np.array(overlapping) >= self.vad_threshold)
+                            / len(overlapping)
+                        )
+                    else:
+                        vad_probability_mean = 0.0
+                        voiced_ratio = 0.0
+
                     record = AcousticFeatureRecord(
                         session_id=self._session_id,
                         stream_id=self._stream_id,
-                        window_start_ms=int(
-                            (cumulative_resampled_samples / 16000.0) * 1000
-                        ),
-                        window_end_ms=int(
-                            ((cumulative_resampled_samples + available) / 16000.0)
-                            * 1000
-                        ),
+                        window_start_ms=w_start_ms,
+                        window_end_ms=w_end_ms,
                         source_start_sample=source_start_sample,
                         source_end_sample=source_end_sample,
                         attribution_status="UNKNOWN",
                         patient_probability=None,
                         attribution_method=None,
-                        vad_probability_mean=0.0,
-                        voiced_ratio=0.0,
+                        vad_probability_mean=vad_probability_mean,
+                        voiced_ratio=voiced_ratio,
                         overlap_probability=0.0,
                         egemaps=None,
                         yamnet_event_scores={cls: 0.0 for cls in self.event_classes},

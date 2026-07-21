@@ -21,6 +21,10 @@ from .schemas.speaker_attribution import (
     EnrollmentConfig,
     SpeakerAttribution,
 )
+from .segmentation.dummy_vad import DummyVAD
+from .segmentation.endpointer import Endpointer
+from .segmentation.silero_vad import SileroVAD
+from .segmentation.vad_interface import VADInterface
 
 __all__ = [
     "AudioPipeline",
@@ -37,4 +41,8 @@ __all__ = [
     "DropReason",
     "ErrorEvent",
     "DegradationEvent",
+    "VADInterface",
+    "SileroVAD",
+    "DummyVAD",
+    "Endpointer",
 ]

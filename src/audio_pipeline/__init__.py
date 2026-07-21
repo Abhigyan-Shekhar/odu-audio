@@ -8,6 +8,7 @@ __version__ = "0.1.0"
 
 from .features.feature_extractor import FeatureExtractor
 from .features.opensmile_extractor import OpenSmileExtractor
+from .features.yamnet_detector import YAMNetDetector
 from .offline.dataset_builder import DatasetBuilder
 from .offline.wav_to_parquet import WavToParquetConverter
 from .pipeline import AudioPipeline
@@ -49,4 +50,5 @@ __all__ = [
     "Endpointer",
     "FeatureExtractor",
     "OpenSmileExtractor",
+    "YAMNetDetector",
 ]

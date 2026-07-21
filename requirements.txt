@@ -1,68 +1,59 @@
-# Core Dependencies
-numpy>=1.24.0,<2.0.0
-scipy>=1.10.0
-pandas>=2.0.0
-pyarrow>=12.0.0  # for parquet
 
+#
+# 
+#    # PyTorch has native MPS support
+#    # Set token: export HF_TOKEN="your_token_here"
+#    # TensorFlow works via conda or pip (universal2 wheels available)
+#    # Then accept user agreement at: https://huggingface.co/pyannote/speaker-diarization
+#    - Generate model hashes for reproducibility
+#    - Pin all versions exactly (use pip freeze)
+#    - Test on target hardware
+#    pip install git+https://github.com/ddlBoJack/emotion2vec.git
+#    pip install git+https://github.com/snakers4/silero-vad.git
+#    pip install pyannote.audio
+#    pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu118
+# 1. Silero VAD (install from source):
+# 2. Pyannote Audio (requires HuggingFace token):
+# 3. emotion2vec (install from source):
+# 4. For GPU support (recommended for diarization & emotion2vec):
+# 5. For M1/M2 Mac (Apple Silicon):
+# 6. For production deployment:
+# ===== Installation Notes =====
 # Audio Processing
+# Configuration & Logging
+# Core Dependencies
+# Feature Extraction
+# Model Training
+# Privacy & Security
+# Type Hints
+# Utilities
+# VAD & Diarization
+# emotion2vec  # install from GitHub: https://github.com/ddlBoJack/emotion2vec
+# pyannote.audio>=3.0.0  # requires HuggingFace token
+# silero-vad>=4.0.0  # install from GitHub
+click>=8.1.0  # CLI
+cryptography>=41.0.0
+flatbuffers==25.12.19
+hashlib  # built-in
+huggingface-hub>=0.16.0
+librosa>=0.10.0
+lightgbm>=4.0.0
+numpy>=1.24.0,<2.0.0
+onnxruntime==1.27.0
+opensmile>=2.5.0  # eGeMAPS
+pandas>=2.0.0
+protobuf==7.35.1
+pyarrow>=12.0.0  # for parquet
+python-dotenv>=1.0.0
+pyyaml>=6.0
+resampy>=0.4.2
+scikit-learn>=1.3.0
+scipy>=1.10.0
 sounddevice>=0.4.6  # microphone capture
 soundfile>=0.12.1
-librosa>=0.10.0
-resampy>=0.4.2
-
-# VAD & Diarization
+tensorflow-hub>=0.14.0
+tensorflow>=2.13.0  # YAMNet
 torch>=2.0.0
 torchaudio>=2.0.0
-# silero-vad>=4.0.0  # install from GitHub
-# pyannote.audio>=3.0.0  # requires HuggingFace token
-huggingface-hub>=0.16.0
-
-# Feature Extraction
-opensmile>=2.5.0  # eGeMAPS
-tensorflow>=2.13.0  # YAMNet
-tensorflow-hub>=0.14.0
-# emotion2vec  # install from GitHub: https://github.com/ddlBoJack/emotion2vec
-
-# Model Training
-lightgbm>=4.0.0
-scikit-learn>=1.3.0
-
-# Configuration & Logging
-pyyaml>=6.0
-python-dotenv>=1.0.0
-
-# Privacy & Security
-cryptography>=41.0.0
-hashlib  # built-in
-
-# Utilities
 tqdm>=4.65.0
-click>=8.1.0  # CLI
-
-# Type Hints
 typing-extensions>=4.7.0
-
-# ===== Installation Notes =====
-# 
-# 1. Silero VAD (install from source):
-#    pip install git+https://github.com/snakers4/silero-vad.git
-#
-# 2. Pyannote Audio (requires HuggingFace token):
-#    pip install pyannote.audio
-#    # Then accept user agreement at: https://huggingface.co/pyannote/speaker-diarization
-#    # Set token: export HF_TOKEN="your_token_here"
-#
-# 3. emotion2vec (install from source):
-#    pip install git+https://github.com/ddlBoJack/emotion2vec.git
-#
-# 4. For GPU support (recommended for diarization & emotion2vec):
-#    pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu118
-#
-# 5. For M1/M2 Mac (Apple Silicon):
-#    # TensorFlow works via conda or pip (universal2 wheels available)
-#    # PyTorch has native MPS support
-#
-# 6. For production deployment:
-#    - Pin all versions exactly (use pip freeze)
-#    - Generate model hashes for reproducibility
-#    - Test on target hardware

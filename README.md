@@ -88,6 +88,7 @@ The following modules are fully implemented inside `src/audio_pipeline/`:
 * **`src/audio_pipeline/features/`**:
   - `feature_extractor.py`: Interface for high-level acoustic extractors.
   - `opensmile_extractor.py`: openSMILE driver for 88 eGeMAPSv02 functionals with ThreadPoolExecutor timeout protection.
+  - `yamnet_detector.py`: YAMNet distress event detector using ONNX Runtime. Runs on the full audio stream (in parallel to VAD) to detect screams, crying, gasps, wheezes, and other distress sounds. Auto-downloads and caches the `yamnet.onnx` model and Audioset class map to `~/.cache/yamnet/`.
 * **`src/audio_pipeline/schemas/`**:
   - `feature_record.py` / `speaker_attribution.py`: Validated data structures representing the streaming pipelines' output.
 
@@ -114,7 +115,7 @@ graph TD
 * `[x]` **Milestone 2**: Streaming Capture & Ingestion (Weeks 4-5)
 * `[x]` **Milestone 3**: VAD & Stable Endpointing (Week 6)
 * `[x]` **Milestone 4**: eGeMAPS Feature Extraction (Week 7)
-* `[ ]` **Milestone 5**: YAMNet Event Detection (Weeks 8-9)
+* `[x]` **Milestone 5**: YAMNet Event Detection (Weeks 8-9)
 * `[ ]` **Milestone 6**: Diarization & Attribution (Weeks 10-12)
 * `[ ]` **Milestone 7**: Graceful Degradation Validation (Week 13)
 * `[ ]` **Milestone 8**: Training Pipeline Baselines (Weeks 14-16)

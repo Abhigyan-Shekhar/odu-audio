@@ -41,6 +41,7 @@ class StreamProcessor:
         config: Optional[Dict[str, Any]] = None,
         vad: Optional[VADInterface] = None,
         egemaps_extractor: Optional[FeatureExtractor] = None,
+        yamnet_detector: Optional[FeatureExtractor] = None,
     ):
         self.source = source
         self.config = config or {}
@@ -103,6 +104,26 @@ class StreamProcessor:
                 )
             else:
                 self._egemaps_extractor = None
+
+        # YAMNet Configuration
+        self.yamnet_enabled = yamnet_cfg.get("enable", yamnet_cfg.get("enabled", True))
+        self.yamnet_timeout = yamnet_cfg.get("timeout_seconds", 5.0)
+        self.yamnet_min_probability = yamnet_cfg.get("min_probability", 0.1)
+
+        self._yamnet_extractor: Optional[FeatureExtractor] = None
+        if yamnet_detector is not None:
+            self._yamnet_extractor = yamnet_detector
+        else:
+            if self.yamnet_enabled:
+                from src.audio_pipeline.features.yamnet_detector import YAMNetDetector
+
+                self._yamnet_extractor = YAMNetDetector(
+                    target_events=self.event_classes,
+                    min_probability=self.yamnet_min_probability,
+                    timeout_seconds=self.yamnet_timeout,
+                )
+            else:
+                self._yamnet_extractor = None
 
         # Runtime configuration
         runtime_cfg = self.config.get("runtime", {})
@@ -410,6 +431,17 @@ class StreamProcessor:
                         sequence_number += 1
                         continue
 
+                    # Extract YAMNet distress event scores (runs in parallel to VAD on the full stream)
+                    yamnet_scores = {cls: 0.0 for cls in self.event_classes}
+                    if self.yamnet_enabled and self._yamnet_extractor is not None:
+                        extracted_events = self._yamnet_extractor.extract(
+                            window_data, sr=16000
+                        )
+                        if extracted_events is not None and isinstance(
+                            extracted_events, dict
+                        ):
+                            yamnet_scores = extracted_events
+
                     # Instantiating the dataclass triggers validator checks
                     record = AcousticFeatureRecord(
                         session_id=self._session_id,
@@ -425,7 +457,7 @@ class StreamProcessor:
                         voiced_ratio=voiced_ratio,
                         overlap_probability=0.0,
                         egemaps=egemaps_features,
-                        yamnet_event_scores={cls: 0.0 for cls in self.event_classes},
+                        yamnet_event_scores=yamnet_scores,
                         emotion_embedding=None,
                         snr_db=snr_db,
                         clipping_ratio=clipping_ratio,
@@ -440,12 +472,22 @@ class StreamProcessor:
                                 if self._egemaps_extractor
                                 else "none"
                             ),
+                            "yamnet": (
+                                self._yamnet_extractor.get_version()
+                                if self._yamnet_extractor
+                                else "none"
+                            ),
                         },
                         config_hash=config_hash,
                         model_hashes={
                             "egemaps": (
                                 self._egemaps_extractor.get_model_hash() or ""
                                 if self._egemaps_extractor
+                                else ""
+                            ),
+                            "yamnet": (
+                                self._yamnet_extractor.get_model_hash() or ""
+                                if self._yamnet_extractor
                                 else ""
                             ),
                         },
@@ -568,6 +610,16 @@ class StreamProcessor:
                             else:
                                 egemaps_features = extracted.tolist()
 
+                    yamnet_scores = {cls: 0.0 for cls in self.event_classes}
+                    if self.yamnet_enabled and self._yamnet_extractor is not None:
+                        extracted_events = self._yamnet_extractor.extract(
+                            window_data, sr=16000
+                        )
+                        if extracted_events is not None and isinstance(
+                            extracted_events, dict
+                        ):
+                            yamnet_scores = extracted_events
+
                     if not skip_this_window:
                         record = AcousticFeatureRecord(
                             session_id=self._session_id,
@@ -583,9 +635,7 @@ class StreamProcessor:
                             voiced_ratio=voiced_ratio,
                             overlap_probability=0.0,
                             egemaps=egemaps_features,
-                            yamnet_event_scores={
-                                cls: 0.0 for cls in self.event_classes
-                            },
+                            yamnet_event_scores=yamnet_scores,
                             emotion_embedding=None,
                             snr_db=snr_db,
                             clipping_ratio=clipping_ratio,
@@ -600,12 +650,22 @@ class StreamProcessor:
                                     if self._egemaps_extractor
                                     else "none"
                                 ),
+                                "yamnet": (
+                                    self._yamnet_extractor.get_version()
+                                    if self._yamnet_extractor
+                                    else "none"
+                                ),
                             },
                             config_hash=config_hash,
                             model_hashes={
                                 "egemaps": (
                                     self._egemaps_extractor.get_model_hash() or ""
                                     if self._egemaps_extractor
+                                    else ""
+                                ),
+                                "yamnet": (
+                                    self._yamnet_extractor.get_model_hash() or ""
+                                    if self._yamnet_extractor
                                     else ""
                                 ),
                             },

@@ -6,6 +6,8 @@ Core package for real-time streaming and offline feature extraction.
 
 __version__ = "0.1.0"
 
+from .features.feature_extractor import FeatureExtractor
+from .features.opensmile_extractor import OpenSmileExtractor
 from .offline.dataset_builder import DatasetBuilder
 from .offline.wav_to_parquet import WavToParquetConverter
 from .pipeline import AudioPipeline
@@ -45,4 +47,6 @@ __all__ = [
     "SileroVAD",
     "DummyVAD",
     "Endpointer",
+    "FeatureExtractor",
+    "OpenSmileExtractor",
 ]

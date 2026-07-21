@@ -15,6 +15,7 @@ from src.audio_pipeline.capture.audio_chunk import AudioChunk
 from src.audio_pipeline.capture.audio_source import AudioSource
 from src.audio_pipeline.capture.bounded_queue import BoundedQueue
 from src.audio_pipeline.capture.ring_buffer import RingBuffer
+from src.audio_pipeline.features.feature_extractor import FeatureExtractor
 from src.audio_pipeline.preprocessing.channel_mixer import to_mono
 from src.audio_pipeline.preprocessing.streaming_resampler import StreamingResampler
 from src.audio_pipeline.quality.clipping import detect_clipping
@@ -39,6 +40,7 @@ class StreamProcessor:
         source: AudioSource,
         config: Optional[Dict[str, Any]] = None,
         vad: Optional[VADInterface] = None,
+        egemaps_extractor: Optional[FeatureExtractor] = None,
     ):
         self.source = source
         self.config = config or {}
@@ -70,6 +72,37 @@ class StreamProcessor:
         self.min_speech_duration_ms = seg_cfg.get("min_speech_duration_ms", 250)
         self.min_silence_duration_ms = seg_cfg.get("min_silence_duration_ms", 500)
         self.speech_pad_ms = seg_cfg.get("speech_pad_ms", 100)
+
+        # eGeMAPS Configuration
+        self.egemaps_enabled = egemaps_cfg.get(
+            "enable", egemaps_cfg.get("enabled", True)
+        )
+        self.egemaps_timeout = egemaps_cfg.get("timeout_seconds", 5.0)
+        self.min_voiced_ratio = egemaps_cfg.get(
+            "minimum_voiced_ratio", egemaps_cfg.get("min_voiced_ratio", 0.40)
+        )
+        self.egemaps_on_failure = egemaps_cfg.get(
+            "on_failure", "emit_none"
+        )  # emit_none | skip_window | fail_pipeline
+        self.egemaps_feature_set = egemaps_cfg.get("feature_set", "eGeMAPSv02")
+        self.egemaps_feature_level = egemaps_cfg.get("feature_level", "Functionals")
+
+        self._egemaps_extractor: Optional[FeatureExtractor] = None
+        if egemaps_extractor is not None:
+            self._egemaps_extractor = egemaps_extractor
+        else:
+            if self.egemaps_enabled:
+                from src.audio_pipeline.features.opensmile_extractor import (
+                    OpenSmileExtractor,
+                )
+
+                self._egemaps_extractor = OpenSmileExtractor(
+                    feature_set=self.egemaps_feature_set,
+                    feature_level=self.egemaps_feature_level,
+                    timeout_seconds=self.egemaps_timeout,
+                )
+            else:
+                self._egemaps_extractor = None
 
         # Runtime configuration
         runtime_cfg = self.config.get("runtime", {})
@@ -342,6 +375,41 @@ class StreamProcessor:
                         (t, p) for t, p in self._vad_history if t >= w_start_ms - 5000
                     ]
 
+                    # Extract eGeMAPS features if enabled
+                    egemaps_features = None
+                    skip_this_window = False
+                    if self.egemaps_enabled and self._egemaps_extractor is not None:
+                        if voiced_ratio < self.min_voiced_ratio:
+                            if self.egemaps_on_failure == "skip_window":
+                                skip_this_window = True
+                            elif self.egemaps_on_failure == "fail_pipeline":
+                                raise RuntimeError(
+                                    f"Voiced ratio {voiced_ratio:.2f} is below threshold {self.min_voiced_ratio:.2f}"
+                                )
+                            else:
+                                egemaps_features = None
+                        else:
+                            extracted = self._egemaps_extractor.extract(
+                                window_data, sr=16000
+                            )
+                            if extracted is None:
+                                if self.egemaps_on_failure == "skip_window":
+                                    skip_this_window = True
+                                elif self.egemaps_on_failure == "fail_pipeline":
+                                    raise RuntimeError(
+                                        "eGeMAPS feature extraction failed"
+                                    )
+                                else:
+                                    egemaps_features = None
+                            else:
+                                egemaps_features = extracted.tolist()
+
+                    if skip_this_window:
+                        self._ring_buffer.advance(hop_samples)
+                        cumulative_resampled_samples += hop_samples
+                        sequence_number += 1
+                        continue
+
                     # Instantiating the dataclass triggers validator checks
                     record = AcousticFeatureRecord(
                         session_id=self._session_id,
@@ -356,7 +424,7 @@ class StreamProcessor:
                         vad_probability_mean=vad_probability_mean,
                         voiced_ratio=voiced_ratio,
                         overlap_probability=0.0,
-                        egemaps=None,
+                        egemaps=egemaps_features,
                         yamnet_event_scores={cls: 0.0 for cls in self.event_classes},
                         emotion_embedding=None,
                         snr_db=snr_db,
@@ -367,9 +435,20 @@ class StreamProcessor:
                             "resampler": "librosa",
                             "audio_reader": "soundfile",
                             "quality_metrics": "native",
+                            "egemaps": (
+                                self._egemaps_extractor.get_version()
+                                if self._egemaps_extractor
+                                else "none"
+                            ),
                         },
                         config_hash=config_hash,
-                        model_hashes={"none": ""},
+                        model_hashes={
+                            "egemaps": (
+                                self._egemaps_extractor.get_model_hash() or ""
+                                if self._egemaps_extractor
+                                else ""
+                            ),
+                        },
                     )
 
                     # Put to output queue (0.1s block timeout to control output backpressure)
@@ -461,35 +540,77 @@ class StreamProcessor:
                         vad_probability_mean = 0.0
                         voiced_ratio = 0.0
 
-                    record = AcousticFeatureRecord(
-                        session_id=self._session_id,
-                        stream_id=self._stream_id,
-                        window_start_ms=w_start_ms,
-                        window_end_ms=w_end_ms,
-                        source_start_sample=source_start_sample,
-                        source_end_sample=source_end_sample,
-                        attribution_status="UNKNOWN",
-                        patient_probability=None,
-                        attribution_method=None,
-                        vad_probability_mean=vad_probability_mean,
-                        voiced_ratio=voiced_ratio,
-                        overlap_probability=0.0,
-                        egemaps=None,
-                        yamnet_event_scores={cls: 0.0 for cls in self.event_classes},
-                        emotion_embedding=None,
-                        snr_db=snr_db,
-                        clipping_ratio=clipping_ratio,
-                        dropout_ratio=dropout_ratio,
-                        quality_status=quality_status,
-                        extractor_versions={
-                            "resampler": "librosa",
-                            "audio_reader": "soundfile",
-                            "quality_metrics": "native",
-                        },
-                        config_hash=config_hash,
-                        model_hashes={"none": ""},
-                    )
-                    self._output_queue.put(record, timeout=0.1)
+                    egemaps_features = None
+                    skip_this_window = False
+                    if self.egemaps_enabled and self._egemaps_extractor is not None:
+                        if voiced_ratio < self.min_voiced_ratio:
+                            if self.egemaps_on_failure == "skip_window":
+                                skip_this_window = True
+                            elif self.egemaps_on_failure == "fail_pipeline":
+                                raise RuntimeError(
+                                    f"Voiced ratio {voiced_ratio:.2f} is below threshold {self.min_voiced_ratio:.2f}"
+                                )
+                            else:
+                                egemaps_features = None
+                        else:
+                            extracted = self._egemaps_extractor.extract(
+                                window_data, sr=16000
+                            )
+                            if extracted is None:
+                                if self.egemaps_on_failure == "skip_window":
+                                    skip_this_window = True
+                                elif self.egemaps_on_failure == "fail_pipeline":
+                                    raise RuntimeError(
+                                        "eGeMAPS feature extraction failed"
+                                    )
+                                else:
+                                    egemaps_features = None
+                            else:
+                                egemaps_features = extracted.tolist()
+
+                    if not skip_this_window:
+                        record = AcousticFeatureRecord(
+                            session_id=self._session_id,
+                            stream_id=self._stream_id,
+                            window_start_ms=w_start_ms,
+                            window_end_ms=w_end_ms,
+                            source_start_sample=source_start_sample,
+                            source_end_sample=source_end_sample,
+                            attribution_status="UNKNOWN",
+                            patient_probability=None,
+                            attribution_method=None,
+                            vad_probability_mean=vad_probability_mean,
+                            voiced_ratio=voiced_ratio,
+                            overlap_probability=0.0,
+                            egemaps=egemaps_features,
+                            yamnet_event_scores={
+                                cls: 0.0 for cls in self.event_classes
+                            },
+                            emotion_embedding=None,
+                            snr_db=snr_db,
+                            clipping_ratio=clipping_ratio,
+                            dropout_ratio=dropout_ratio,
+                            quality_status=quality_status,
+                            extractor_versions={
+                                "resampler": "librosa",
+                                "audio_reader": "soundfile",
+                                "quality_metrics": "native",
+                                "egemaps": (
+                                    self._egemaps_extractor.get_version()
+                                    if self._egemaps_extractor
+                                    else "none"
+                                ),
+                            },
+                            config_hash=config_hash,
+                            model_hashes={
+                                "egemaps": (
+                                    self._egemaps_extractor.get_model_hash() or ""
+                                    if self._egemaps_extractor
+                                    else ""
+                                ),
+                            },
+                        )
+                        self._output_queue.put(record, timeout=0.1)
         finally:
             self._process_done = True
             self._running = False

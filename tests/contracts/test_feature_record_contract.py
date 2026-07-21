@@ -3,6 +3,7 @@ Unit tests verifying AcousticFeatureRecord contract properties, constraints, and
 """
 
 import pytest
+
 from src.audio_pipeline.schemas.feature_record import AcousticFeatureRecord, DropReason
 
 
@@ -51,7 +52,9 @@ def test_feature_record_probability_constraints(sample_session_id, sample_stream
 
 
 def test_feature_record_temporal_constraints(sample_session_id, sample_stream_id):
-    with pytest.raises(AssertionError, match="window_start_ms must be <= window_end_ms"):
+    with pytest.raises(
+        AssertionError, match="window_start_ms must be <= window_end_ms"
+    ):
         AcousticFeatureRecord(
             session_id=sample_session_id,
             stream_id=sample_stream_id,
@@ -87,12 +90,12 @@ def test_feature_record_serialization(sample_session_id, sample_stream_id):
         patient_probability=0.8,
         egemaps=[0.1] * 88,
     )
-    
+
     d = record.to_dict()
     assert d["session_id"] == sample_session_id
     assert d["patient_probability"] == 0.8
     assert d["egemaps"] == [0.1] * 88
-    
+
     record2 = AcousticFeatureRecord.from_dict(d)
     assert record2.session_id == record.session_id
     assert record2.patient_probability == record.patient_probability
@@ -112,11 +115,11 @@ def test_feature_record_helper_methods(sample_session_id, sample_stream_id):
         egemaps=[0.1] * 88,
         quality_status="OK",
     )
-    
+
     assert record_ok.is_patient_speech(threshold=0.5)
     assert not record_ok.has_quality_issues()
     assert record_ok.is_usable(min_patient_prob=0.5)
-    
+
     # Degraded/poor quality
     record_clipped = AcousticFeatureRecord(
         session_id=sample_session_id,

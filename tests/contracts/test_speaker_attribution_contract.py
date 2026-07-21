@@ -3,11 +3,12 @@ Unit tests verifying SpeakerAttribution contract properties and enrollment confi
 """
 
 import pytest
+
 from src.audio_pipeline.schemas.speaker_attribution import (
-    SpeakerAttribution,
-    AttributionStatus,
     AttributionMethod,
+    AttributionStatus,
     EnrollmentConfig,
+    SpeakerAttribution,
 )
 
 
@@ -83,7 +84,7 @@ def test_speaker_attribution_serialization():
     d = attr.to_dict()
     assert d["speaker_id"] == "spk_001"
     assert d["status"] == "PATIENT"
-    
+
     attr2 = SpeakerAttribution.from_dict(d)
     assert attr2.speaker_id == attr.speaker_id
     assert attr2.status == attr.status

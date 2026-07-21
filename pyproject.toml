@@ -33,6 +33,9 @@ dependencies = [
     "typing-extensions>=4.7.0"
 ]
 
+[project.scripts]
+audio-pipeline = "src.audio_pipeline.cli:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
@@ -43,7 +46,8 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
+include = ["src*"]
 
 [tool.black]
 line-length = 88
@@ -52,7 +56,10 @@ target-version = ['py310']
 [tool.ruff]
 line-length = 88
 target-version = "py310"
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "I"]
+ignore = ["E501"]
 
 [tool.mypy]
 python_version = "3.10"

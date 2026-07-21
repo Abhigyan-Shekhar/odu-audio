@@ -3,10 +3,13 @@ Unit tests verifying SpeechSegment contract properties and constraints.
 """
 
 import pytest
+
 from src.audio_pipeline.schemas.segment import SpeechSegment
 
 
-def test_speech_segment_instantiation(sample_speech_segment, sample_session_id, sample_stream_id):
+def test_speech_segment_instantiation(
+    sample_speech_segment, sample_session_id, sample_stream_id
+):
     assert sample_speech_segment.start_ms == 100
     assert sample_speech_segment.end_ms == 1100
     assert sample_speech_segment.start_sample == 1600

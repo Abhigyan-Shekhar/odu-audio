@@ -484,24 +484,24 @@ Every schema MUST document:
 
 ## Review and Approval
 
-**Status**: APPROVED (v0.1-provisional)
+**Status**: APPROVED (v1.0)
 
 **Versioning Strategy**:
 - **v0.1-provisional**: Initial approval for prototype implementation
 - **v1.0**: Stabilized after Milestone 1 validates contracts in practice
 - **Later versions**: Require backward-compatible evolution or explicit migrations
 
-**Required approvals for v0.1-provisional**:
+**Required approvals for v1.0**:
 
-| Role | Approval Scope | Reviewer |
-|------|----------------|----------|
-| Runtime owner | Streaming and concurrency contracts | Abhigyan-Shekhar |
-| Data owner | Parquet schema and retention | Abhigyan-Shekhar |
-| ML owner | Model input/output contracts | Abhigyan-Shekhar |
-| Security | Threat controls and secrets | Abhigyan-Shekhar |
-| Privacy | Identifiers, embeddings, retention | Abhigyan-Shekhar |
-| Clinical/domain owner | Intended use and interpretation | Abhigyan-Shekhar |
-| Technical lead | Final integration decision | Abhigyan-Shekhar |
+| Role | Approval Scope | Reviewer | Status |
+|------|----------------|----------|--------|
+| Runtime owner | Streaming and concurrency contracts | Abhigyan-Shekhar | APPROVED |
+| Data owner | Parquet schema and retention | Abhigyan-Shekhar | APPROVED |
+| ML owner | Model input/output contracts | Abhigyan-Shekhar | APPROVED |
+| Security | Threat controls and secrets | Abhigyan-Shekhar | APPROVED |
+| Privacy | Identifiers, embeddings, retention | Abhigyan-Shekhar | APPROVED |
+| Clinical/domain owner | Intended use and interpretation | Abhigyan-Shekhar | APPROVED |
+| Technical lead | Final integration decision | Abhigyan-Shekhar | APPROVED |
 
 **Approval threshold for later changes**:
 - **Patch (1.0.x)**: Technical lead only
@@ -510,9 +510,9 @@ Every schema MUST document:
 
 **Approval Date (v0.1)**: 2026-07-21
 
-**Contract Version**: 0.1-provisional
+**Contract Version**: 1.0
 
-**Stabilization Date (v1.0)**: Pending (after Milestone 1 prototype validation)
+**Stabilization Date (v1.0)**: 2026-07-21 (Milestone 1 integration complete)
 
 ---
 
@@ -522,4 +522,5 @@ Every schema MUST document:
 |---------|------|--------|-------------|
 | 1.0.0-draft | 2024-07-20 | Initial draft | Pending |
 | 0.1-provisional | 2026-07-21 | Approved for prototype | Abhigyan-Shekhar |
+| 1.0 | 2026-07-21 | Validated by Milestone 1 integration tests, stabilized contract | Abhigyan-Shekhar |
 

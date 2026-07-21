@@ -2,12 +2,14 @@
 Unit tests for the Graceful Degradation Manager.
 """
 
-import pytest
 import time
+
+import pytest
+
 from src.audio_pipeline.runtime.degradation import (
-    DegradationManager,
     DegradationConfig,
     DegradationLevel,
+    DegradationManager,
 )
 
 
@@ -28,14 +30,14 @@ def base_config():
 
 def test_degradation_manager_p95_latency(base_config):
     mgr = DegradationManager(base_config)
-    
+
     # Empty case
     assert mgr.get_current_latency_p95() == 0.0
-    
+
     # 20 samples: 1..20
     for latency in range(1, 21):
         mgr.record_latency(float(latency))
-        
+
     # p95 should pick index 19 in sorted array (0.95 * 20 = 19, which is the 20th item = 20.0)
     assert mgr.get_current_latency_p95() == 20.0
 
@@ -43,7 +45,7 @@ def test_degradation_manager_p95_latency(base_config):
 def test_degradation_transitions(base_config):
     mgr = DegradationManager(base_config)
     assert mgr.current_level == DegradationLevel.LEVEL_0
-    
+
     # Trigger Level 1 (> 200 ms)
     for _ in range(20):
         mgr.record_latency(250.0)
@@ -51,14 +53,14 @@ def test_degradation_transitions(base_config):
     new_level = mgr.degrade()
     assert new_level == DegradationLevel.LEVEL_1
     assert mgr.current_level == DegradationLevel.LEVEL_1
-    
+
     # Trigger Level 2 (> 500 ms)
     for _ in range(20):
         mgr.record_latency(600.0)
     assert mgr.should_degrade()
     new_level = mgr.degrade()
     assert new_level == DegradationLevel.LEVEL_2
-    
+
     # Max degradation LEVEL_5
     mgr.current_level = DegradationLevel.LEVEL_4
     for _ in range(20):
@@ -72,14 +74,16 @@ def test_degradation_transitions(base_config):
 def test_recovery_transitions(base_config):
     mgr = DegradationManager(base_config)
     mgr.current_level = DegradationLevel.LEVEL_2
-    mgr.last_level_change_time = time.time() - 2.0  # mock time passing (past recovery delay)
-    
+    mgr.last_level_change_time = (
+        time.time() - 2.0
+    )  # mock time passing (past recovery delay)
+
     # Threshold for LEVEL_2 is 500 ms. Recovery ratio is 0.5.
     # So recovery threshold is 500 * 0.5 = 250 ms.
     # Latency 150 ms is below 250 ms.
     for _ in range(20):
         mgr.record_latency(150.0)
-        
+
     assert mgr.should_recover()
     new_level = mgr.recover()
     assert new_level == DegradationLevel.LEVEL_1
@@ -89,47 +93,47 @@ def test_recovery_delay_blocking(base_config):
     mgr = DegradationManager(base_config)
     mgr.current_level = DegradationLevel.LEVEL_2
     mgr.last_level_change_time = time.time()  # just changed now
-    
+
     for _ in range(20):
         mgr.record_latency(50.0)
-        
+
     # Should not recover because not enough time has passed since last level change
     assert not mgr.should_recover()
 
 
 def test_component_activation_by_level(base_config):
     mgr = DegradationManager(base_config)
-    
+
     # Level 0: everything active
     mgr.current_level = DegradationLevel.LEVEL_0
     assert mgr.is_component_active("emotion2vec")
     assert mgr.is_component_active("vad")
     assert mgr.is_component_active("quality")
-    
+
     # Level 1: everything active (frequency scaling handled inside components)
     mgr.current_level = DegradationLevel.LEVEL_1
     assert mgr.is_component_active("emotion2vec")
     assert mgr.is_component_active("vad")
-    
+
     # Level 2: disable emotion2vec
     mgr.current_level = DegradationLevel.LEVEL_2
     assert not mgr.is_component_active("emotion2vec")
     assert mgr.is_component_active("vad")
-    
+
     # Level 3: disable diarization refinement
     mgr.current_level = DegradationLevel.LEVEL_3
     assert not mgr.is_component_active("emotion2vec")
     assert not mgr.is_component_active("diarization_refinement")
     assert mgr.is_component_active("vad")
     assert mgr.is_component_active("diarization")  # provisional diarization active
-    
+
     # Level 4: VAD + quality + critical events (YAMNet) only
     mgr.current_level = DegradationLevel.LEVEL_4
     assert not mgr.is_component_active("egemaps")
     assert mgr.is_component_active("vad")
     assert mgr.is_component_active("yamnet")
     assert mgr.is_component_active("quality")
-    
+
     # Level 5: Quality/status events only
     mgr.current_level = DegradationLevel.LEVEL_5
     assert not mgr.is_component_active("vad")
@@ -139,15 +143,17 @@ def test_component_activation_by_level(base_config):
 
 def test_emotion2vec_hop_multiplier(base_config):
     mgr = DegradationManager(base_config)
-    
+
     mgr.current_level = DegradationLevel.LEVEL_0
     assert mgr.get_emotion2vec_hop_multiplier() == 1
-    
+
     mgr.current_level = DegradationLevel.LEVEL_1
     assert mgr.get_emotion2vec_hop_multiplier() == 2
-    
+
     mgr.current_level = DegradationLevel.LEVEL_2
-    assert mgr.get_emotion2vec_hop_multiplier() == 1  # component itself is inactive anyway
+    assert (
+        mgr.get_emotion2vec_hop_multiplier() == 1
+    )  # component itself is inactive anyway
 
 
 def test_degradation_status_summary(base_config):

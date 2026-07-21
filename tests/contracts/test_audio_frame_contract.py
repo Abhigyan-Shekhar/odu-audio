@@ -2,13 +2,17 @@
 Unit tests verifying AudioFrame contract properties and constraints.
 """
 
-import pytest
-import numpy as np
-from src.audio_pipeline.schemas.audio_frame import AudioFrame
 from dataclasses import FrozenInstanceError
 
+import numpy as np
+import pytest
 
-def test_audio_frame_instantiation(sample_audio_frame, sample_session_id, sample_stream_id):
+from src.audio_pipeline.schemas.audio_frame import AudioFrame
+
+
+def test_audio_frame_instantiation(
+    sample_audio_frame, sample_session_id, sample_stream_id
+):
     assert sample_audio_frame.sample_rate == 16000
     assert sample_audio_frame.n_channels == 1
     assert sample_audio_frame.sequence_number == 0
@@ -62,7 +66,9 @@ def test_audio_frame_channel_mismatch(sample_session_id, sample_stream_id):
         )
 
 
-def test_audio_frame_invalid_values(mono_audio_samples, sample_session_id, sample_stream_id):
+def test_audio_frame_invalid_values(
+    mono_audio_samples, sample_session_id, sample_stream_id
+):
     # Non-positive sample_rate
     with pytest.raises(AssertionError, match="sample_rate must be positive"):
         AudioFrame(

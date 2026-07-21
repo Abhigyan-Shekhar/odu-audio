@@ -2,8 +2,8 @@
 Pytest configuration and global fixtures.
 """
 
-import pytest
 import numpy as np
+import pytest
 
 
 @pytest.fixture
@@ -31,6 +31,7 @@ def stereo_audio_samples():
 @pytest.fixture
 def sample_audio_frame(mono_audio_samples, sample_session_id, sample_stream_id):
     from src.audio_pipeline.schemas.audio_frame import AudioFrame
+
     return AudioFrame(
         samples=mono_audio_samples,
         sample_rate=16000,
@@ -49,6 +50,7 @@ def sample_audio_frame(mono_audio_samples, sample_session_id, sample_stream_id):
 @pytest.fixture
 def sample_speech_segment(sample_session_id, sample_stream_id):
     from src.audio_pipeline.schemas.segment import SpeechSegment
+
     return SpeechSegment(
         start_ms=100,
         end_ms=1100,

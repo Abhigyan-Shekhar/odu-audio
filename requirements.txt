@@ -37,7 +37,7 @@ flatbuffers==25.12.19
 huggingface-hub>=0.16.0
 librosa>=0.10.0
 lightgbm>=4.0.0
-numpy>=1.24.0,<2.0.0
+numpy>=2.0.0,<2.1.0
 onnxruntime>=1.16.0,<1.24
 opensmile>=2.5.0  # eGeMAPS
 pandas>=2.0.0

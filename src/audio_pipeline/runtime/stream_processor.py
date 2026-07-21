@@ -1,12 +1,360 @@
 """
-Stream processor placeholder.
+Real-time streaming audio processor coordinator.
 """
+
+import hashlib
+import json
+import logging
+import threading
+import time
+from typing import Any, Dict, Iterator, Optional
+
+from src.audio_pipeline.capture.audio_chunk import AudioChunk
+from src.audio_pipeline.capture.audio_source import AudioSource
+from src.audio_pipeline.capture.bounded_queue import BoundedQueue
+from src.audio_pipeline.capture.ring_buffer import RingBuffer
+from src.audio_pipeline.preprocessing.channel_mixer import to_mono
+from src.audio_pipeline.preprocessing.streaming_resampler import StreamingResampler
+from src.audio_pipeline.quality.clipping import detect_clipping
+from src.audio_pipeline.quality.dropout import detect_dropout
+from src.audio_pipeline.quality.snr import estimate_snr
+from src.audio_pipeline.schemas.feature_record import AcousticFeatureRecord
+
+logger = logging.getLogger(__name__)
 
 
 class StreamProcessor:
-    """Placeholder runtime stream processor."""
+    """
+    Coordinates real-time streaming audio capture, preprocessing,
+    and feature/quality extraction in background threads.
+    """
 
-    def __init__(self, *args, **kwargs):
-        raise NotImplementedError(
-            "StreamProcessor is not yet implemented (Milestone 0)."
+    def __init__(self, source: AudioSource, config: Optional[Dict[str, Any]] = None):
+        self.source = source
+        self.config = config or {}
+
+        # Features configuration
+        features_cfg = self.config.get("features", {})
+        egemaps_cfg = features_cfg.get("egemaps", {})
+        self.window_seconds = egemaps_cfg.get("window_seconds", 2.0)
+        self.hop_seconds = egemaps_cfg.get("hop_seconds", 0.5)
+
+        yamnet_cfg = features_cfg.get("yamnet", {})
+        self.event_classes = yamnet_cfg.get(
+            "event_classes",
+            ["Scream", "Crying, sobbing", "Yell", "Gasp", "Groan", "Whimper", "Wheeze"],
         )
+
+        # Quality thresholds
+        quality_cfg = self.config.get("quality", {})
+        self.clipping_threshold = quality_cfg.get("clipping_threshold", 0.99)
+        self.clipping_max_ratio = quality_cfg.get("clipping_max_ratio", 0.05)
+        self.dropout_zero_threshold = quality_cfg.get("dropout_zero_threshold", 1e-6)
+        self.dropout_max_ratio = quality_cfg.get("dropout_max_ratio", 0.10)
+        self.snr_min_db = quality_cfg.get("snr_min_db", 10.0)
+
+        # Runtime configuration
+        runtime_cfg = self.config.get("runtime", {})
+        self.queue_capacity = runtime_cfg.get("queue_capacity", 100)
+
+        # Internal buffers and queues
+        self._chunk_queue: BoundedQueue[AudioChunk] = BoundedQueue(
+            maxsize=self.queue_capacity
+        )
+        self._output_queue: BoundedQueue[AcousticFeatureRecord] = BoundedQueue(
+            maxsize=1000
+        )
+        self._ring_buffer: Optional[RingBuffer] = None
+        self._resampler: Optional[StreamingResampler] = None
+
+        # Threading state
+        self._running = False
+        self._capture_done = False
+        self._process_done = False
+        self._stop_event = threading.Event()
+        self._capture_thread: Optional[threading.Thread] = None
+        self._process_thread: Optional[threading.Thread] = None
+
+        # Session metadata
+        self._session_id = (
+            f"session_{hashlib.md5(str(time.time_ns()).encode()).hexdigest()[:8]}"
+        )
+        self._stream_id = (
+            f"stream_{hashlib.md5(str(time.time_ns() + 1).encode()).hexdigest()[:8]}"
+        )
+
+    def start(self) -> None:
+        """Start the capture and processing threads."""
+        if self._running:
+            return
+
+        self._running = True
+        self._capture_done = False
+        self._process_done = False
+        self._stop_event.clear()
+
+        # Instantiate streaming resampler and ring buffer (using target 16kHz)
+        self._resampler = StreamingResampler(
+            source_sr=self.source.sample_rate, target_sr=16000
+        )
+        self._ring_buffer = RingBuffer(capacity_seconds=60.0, sample_rate=16000)
+
+        # Start background threads
+        self._capture_thread = threading.Thread(
+            target=self._capture_loop, name="audio-capture-thread", daemon=True
+        )
+        self._process_thread = threading.Thread(
+            target=self._process_loop, name="audio-process-thread", daemon=True
+        )
+
+        self._capture_thread.start()
+        self._process_thread.start()
+        logger.info("StreamProcessor started successfully.")
+
+    def stop(self) -> None:
+        """Stop threads and release resources."""
+        if not self._running:
+            return
+
+        self._running = False
+        self._stop_event.set()
+
+        # Join capture thread
+        if self._capture_thread is not None:
+            self._capture_thread.join(timeout=2.0)
+            self._capture_thread = None
+
+        # Join processing thread
+        if self._process_thread is not None:
+            self._process_thread.join(timeout=2.0)
+            self._process_thread = None
+
+        self.source.close()
+        logger.info("StreamProcessor stopped and audio source closed.")
+
+    def _capture_loop(self) -> None:
+        """Reads audio chunks from the AudioSource and writes to bounded chunk queue."""
+        try:
+            while self._running and not self._stop_event.is_set():
+                try:
+                    chunk = self.source.read_chunk()
+                    # Put chunk onto queue. 0.1s block timeout before dropping under backpressure
+                    success = self._chunk_queue.put(chunk, timeout=0.1)
+                    if not success:
+                        logger.warning(
+                            "Ingestion backpressure: queue full, chunk dropped."
+                        )
+                        # If queue is full, mark a discontinuity in the ring buffer
+                        if self._ring_buffer is not None:
+                            self._ring_buffer.mark_discontinuity(
+                                reason="BUFFER_OVERFLOW"
+                            )
+                except EOFError:
+                    # Normal termination (e.g. file source reached EOF)
+                    logger.info("Ingestion complete (EOF reached).")
+                    break
+                except Exception as e:
+                    logger.error(f"Error in capture loop: {e}")
+                    if self._ring_buffer is not None:
+                        self._ring_buffer.mark_discontinuity(reason="DEVICE_ERROR")
+                    break
+        finally:
+            self._capture_done = True
+
+    def _process_loop(self) -> None:
+        """Processes chunks from the queue, handles resampling, windowing, and metrics."""
+        try:
+            assert self._ring_buffer is not None
+            assert self._resampler is not None
+
+            window_samples = int(self.window_seconds * 16000)
+            hop_samples = int(self.hop_seconds * 16000)
+            config_hash = hashlib.sha256(
+                json.dumps(self.config, sort_keys=True).encode()
+            ).hexdigest()[:8]
+
+            cumulative_resampled_samples = 0
+            sequence_number = 0
+            original_sr = self.source.sample_rate
+
+            while not self._capture_done or self._chunk_queue.qsize() > 0:
+                chunk = self._chunk_queue.get(timeout=0.1)
+                if chunk is None:
+                    if self._capture_done:
+                        # Ingestion has stopped and queue is empty, terminate processing loop
+                        break
+                    continue
+
+                # 1. Downmix to mono
+                mono_samples = to_mono(chunk.samples)
+
+                # 2. Resample statefully to 16 kHz
+                resampled = self._resampler.process_chunk(mono_samples)
+
+                # 3. Propagate chunk-level discontinuities to ring buffer
+                if chunk.discontinuity:
+                    self._ring_buffer.mark_discontinuity(
+                        reason=chunk.discontinuity_reason or "BUFFER_OVERFLOW"
+                    )
+
+                # 4. Write to RingBuffer
+                self._ring_buffer.write(resampled)
+
+                # 5. Extract features from overlapping windows
+                ratio = original_sr / 16000.0
+
+                while self._ring_buffer.get_available_samples() >= window_samples:
+                    window_data = self._ring_buffer.peek(window_samples)
+                    if window_data is None:
+                        break
+
+                    # Extract quality metrics
+                    clipping_ratio = detect_clipping(
+                        window_data, threshold=self.clipping_threshold
+                    )
+                    dropout_ratio = detect_dropout(
+                        window_data, threshold=self.dropout_zero_threshold
+                    )
+                    snr_db = estimate_snr(window_data, sample_rate=16000)
+
+                    # Determine quality status
+                    if clipping_ratio >= self.clipping_max_ratio:
+                        quality_status = "CLIPPED"
+                    elif dropout_ratio >= self.dropout_max_ratio:
+                        quality_status = "DROPOUT"
+                    elif snr_db < self.snr_min_db:
+                        quality_status = "LOW_SNR"
+                    else:
+                        quality_status = "OK"
+
+                    # Check and reset ring buffer discontinuity flags
+                    has_disc, disc_reason = (
+                        self._ring_buffer.check_and_reset_discontinuity()
+                    )
+
+                    # Map resampled windows back to source WAV sample indices
+                    source_start_sample = int(cumulative_resampled_samples * ratio)
+                    source_end_sample = int(
+                        (cumulative_resampled_samples + window_samples) * ratio
+                    )
+
+                    # Instantiating the dataclass triggers validator checks
+                    record = AcousticFeatureRecord(
+                        session_id=self._session_id,
+                        stream_id=self._stream_id,
+                        window_start_ms=int(
+                            (cumulative_resampled_samples / 16000.0) * 1000
+                        ),
+                        window_end_ms=int(
+                            ((cumulative_resampled_samples + window_samples) / 16000.0)
+                            * 1000
+                        ),
+                        source_start_sample=source_start_sample,
+                        source_end_sample=source_end_sample,
+                        attribution_status="UNKNOWN",
+                        patient_probability=None,
+                        attribution_method=None,
+                        vad_probability_mean=0.0,
+                        voiced_ratio=0.0,
+                        overlap_probability=0.0,
+                        egemaps=None,
+                        yamnet_event_scores={cls: 0.0 for cls in self.event_classes},
+                        emotion_embedding=None,
+                        snr_db=snr_db,
+                        clipping_ratio=clipping_ratio,
+                        dropout_ratio=dropout_ratio,
+                        quality_status=quality_status,
+                        extractor_versions={
+                            "resampler": "librosa",
+                            "audio_reader": "soundfile",
+                            "quality_metrics": "native",
+                        },
+                        config_hash=config_hash,
+                        model_hashes={"none": ""},
+                    )
+
+                    # Put to output queue (0.1s block timeout to control output backpressure)
+                    self._output_queue.put(record, timeout=0.1)
+
+                    # Advance sliding window by hop length
+                    self._ring_buffer.advance(hop_samples)
+                    cumulative_resampled_samples += hop_samples
+                    sequence_number += 1
+
+            # 6. Handle final partial window on shutdown/EOF
+            available = self._ring_buffer.get_available_samples()
+            if available > 0:
+                window_data = self._ring_buffer.peek(available)
+                if window_data is not None and len(window_data) > 0:
+                    clipping_ratio = detect_clipping(
+                        window_data, threshold=self.clipping_threshold
+                    )
+                    dropout_ratio = detect_dropout(
+                        window_data, threshold=self.dropout_zero_threshold
+                    )
+                    snr_db = estimate_snr(window_data, sample_rate=16000)
+
+                    if clipping_ratio >= self.clipping_max_ratio:
+                        quality_status = "CLIPPED"
+                    elif dropout_ratio >= self.dropout_max_ratio:
+                        quality_status = "DROPOUT"
+                    elif snr_db < self.snr_min_db:
+                        quality_status = "LOW_SNR"
+                    else:
+                        quality_status = "OK"
+
+                    source_start_sample = int(cumulative_resampled_samples * ratio)
+                    source_end_sample = int(
+                        (cumulative_resampled_samples + available) * ratio
+                    )
+
+                    record = AcousticFeatureRecord(
+                        session_id=self._session_id,
+                        stream_id=self._stream_id,
+                        window_start_ms=int(
+                            (cumulative_resampled_samples / 16000.0) * 1000
+                        ),
+                        window_end_ms=int(
+                            ((cumulative_resampled_samples + available) / 16000.0)
+                            * 1000
+                        ),
+                        source_start_sample=source_start_sample,
+                        source_end_sample=source_end_sample,
+                        attribution_status="UNKNOWN",
+                        patient_probability=None,
+                        attribution_method=None,
+                        vad_probability_mean=0.0,
+                        voiced_ratio=0.0,
+                        overlap_probability=0.0,
+                        egemaps=None,
+                        yamnet_event_scores={cls: 0.0 for cls in self.event_classes},
+                        emotion_embedding=None,
+                        snr_db=snr_db,
+                        clipping_ratio=clipping_ratio,
+                        dropout_ratio=dropout_ratio,
+                        quality_status=quality_status,
+                        extractor_versions={
+                            "resampler": "librosa",
+                            "audio_reader": "soundfile",
+                            "quality_metrics": "native",
+                        },
+                        config_hash=config_hash,
+                        model_hashes={"none": ""},
+                    )
+                    self._output_queue.put(record, timeout=0.1)
+        finally:
+            self._process_done = True
+            self._running = False
+
+    def stream(self) -> Iterator[AcousticFeatureRecord]:
+        """
+        Yield extracted feature records as they are produced in real-time.
+        """
+        while not self._process_done or self._output_queue.qsize() > 0:
+            record = self._output_queue.get(timeout=0.1)
+            if record is not None:
+                yield record
+            else:
+                if self._process_done:
+                    # Thread stopped and no more outputs left
+                    break

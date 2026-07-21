@@ -1,0 +1,39 @@
+{
+  "session_id": "session_31d5cae4",
+  "stream_id": "stream_81e2998b",
+  "window_start_ms": 0,
+  "window_end_ms": 2000,
+  "source_start_sample": 0,
+  "source_end_sample": 32000,
+  "speaker_id": null,
+  "patient_probability": null,
+  "attribution_status": "UNKNOWN",
+  "attribution_method": null,
+  "vad_probability_mean": 0.0,
+  "voiced_ratio": 0.0,
+  "overlap_probability": 0.0,
+  "egemaps": null,
+  "yamnet_event_scores": {
+    "Scream": 0.0,
+    "Crying, sobbing": 0.0,
+    "Yell": 0.0,
+    "Gasp": 0.0,
+    "Groan": 0.0,
+    "Whimper": 0.0,
+    "Wheeze": 0.0
+  },
+  "emotion_embedding": null,
+  "snr_db": 0.0,
+  "clipping_ratio": 0.0,
+  "dropout_ratio": 0.005,
+  "quality_status": "OK",
+  "extractor_versions": {
+    "resampler": "librosa",
+    "audio_reader": "soundfile",
+    "quality_metrics": "native"
+  },
+  "config_hash": "a2a08966",
+  "model_hashes": {
+    "none": ""
+  }
+}

@@ -20,7 +20,7 @@ from src.audio_pipeline.speakers.diarizer_interface import (
 
 logger = logging.getLogger(__name__)
 
-_PYANNOTE_MODEL = "pyannote/speaker-diarization-3.1"
+_PYANNOTE_MODEL = "pyannote/speaker-diarization-community-1"
 
 
 class PyannoteDiarizer(DiarizeriInterface):
@@ -45,6 +45,7 @@ class PyannoteDiarizer(DiarizeriInterface):
         min_speakers: Optional[int] = None,
         max_speakers: Optional[int] = None,
         timeout_seconds: float = 30.0,
+        device: str = "cpu",
     ):
         """
         Args:
@@ -54,6 +55,7 @@ class PyannoteDiarizer(DiarizeriInterface):
             min_speakers:    Lower bound on speaker count hint (optional).
             max_speakers:    Upper bound on speaker count hint (optional).
             timeout_seconds: Per-segment inference timeout.
+            device:          Torch device string, e.g. 'cpu', 'cuda', 'mps'.
         """
         import os
 
@@ -75,7 +77,7 @@ class PyannoteDiarizer(DiarizeriInterface):
                 "Ensure the model name is correct and the HF token is valid."
             )
         self._pipeline: Pipeline = pipeline
-        self._pipeline.to(torch.device("cpu"))
+        self._pipeline.to(torch.device(device))
         self.min_speakers = min_speakers
         self.max_speakers = max_speakers
         self.timeout_seconds = timeout_seconds

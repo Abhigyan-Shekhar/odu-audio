@@ -95,6 +95,12 @@ The following modules are fully implemented inside `src/audio_pipeline/`:
   - `pyannote_diarizer.py`: Full pyannote.audio 3.x diarization backend accepting in-memory waveform tensors (requires HF token).
   - `enrollment.py`: `SessionEnrollment` — enrolls patient speaker embedding at session start, computes cosine similarity. Embeddings are in-memory only (never persisted).
   - `attribution.py`: `SpeakerAttributor` — 8-step decision logic; ambiguous/overlapping speech always produces `UNKNOWN`/`OVERLAP`, never forced `PATIENT`.
+* **`src/audio_pipeline/evaluation/`**:
+  - `dataset_splitter.py`: `DatasetSplitter` ensuring strict patient-level isolation across train/val/test splits.
+  - `metrics.py`: Standardized metrics for patient attribution (precision, recall, FAR, abstention) and model calibration (ECE).
+* **`src/audio_pipeline/augmentation/`**:
+  - `noise_augmenter.py`: `NoiseAugmenter` generating synthetic room noise at target SNR ranges.
+  - `codec_augmenter.py`: `CodecAugmenter` simulating telephony downsampling and mu-law quantization artifacts.
 * **`src/audio_pipeline/schemas/`**:
   - `feature_record.py` / `speaker_attribution.py`: Validated data structures representing the streaming pipelines' output.
 
@@ -124,7 +130,7 @@ graph TD
 * `[x]` **Milestone 5**: YAMNet Event Detection (Weeks 8-9)
 * `[x]` **Milestone 6**: Diarization & Attribution (Weeks 10-12)
 * `[x]` **Milestone 7**: Graceful Degradation Validation (Week 13)
-* `[ ]` **Milestone 8**: Training Pipeline Baselines (Weeks 14-16)
+* `[x]` **Milestone 8**: Training Pipeline Baselines (Weeks 14-16)
 
 ---
 

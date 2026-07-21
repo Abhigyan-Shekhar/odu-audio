@@ -6,6 +6,7 @@ from typing import cast
 
 import librosa
 import numpy as np
+from numpy.typing import NDArray
 
 
 class StreamingResampler:
@@ -20,7 +21,9 @@ class StreamingResampler:
         self.history_len = history_len
 
         self._ratio = target_sr / source_sr
-        self._history = np.zeros(self.history_len, dtype=np.float32)
+        self._history: NDArray[np.float32] = np.zeros(
+            self.history_len, dtype=np.float32
+        )
         self._is_first = True
 
     def process_chunk(self, chunk: np.ndarray) -> np.ndarray:
@@ -69,10 +72,11 @@ class StreamingResampler:
             self._history = chunk[-self.history_len :].copy()
         else:
             # Shift history left and copy current chunk to the end
-            self._history = np.asarray(
+            history: NDArray[np.float32] = np.asarray(
                 np.concatenate([self._history[len(chunk) :], chunk]),
                 dtype=np.float32,
-            ).reshape(self.history_len)
+            )
+            self._history = history.reshape(self.history_len)
 
         return resampled_chunk
 

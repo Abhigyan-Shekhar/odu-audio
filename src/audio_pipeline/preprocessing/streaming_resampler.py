@@ -69,7 +69,10 @@ class StreamingResampler:
             self._history = chunk[-self.history_len :].copy()
         else:
             # Shift history left and copy current chunk to the end
-            self._history = np.concatenate([self._history[len(chunk) :], chunk])
+            self._history = np.asarray(
+                np.concatenate([self._history[len(chunk) :], chunk]),
+                dtype=np.float32,
+            ).reshape(self.history_len)
 
         return resampled_chunk
 

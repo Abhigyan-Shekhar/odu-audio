@@ -3,7 +3,6 @@
 import re
 import unicodedata
 
-
 _LEET_MAP = str.maketrans(
     {
         "0": "o",

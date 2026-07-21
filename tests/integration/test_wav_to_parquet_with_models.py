@@ -25,7 +25,6 @@ from src.audio_pipeline.offline.wav_to_parquet import WavToParquetConverter
 from src.audio_pipeline.segmentation.dummy_vad import DummyVAD
 from src.audio_pipeline.speakers.dummy_diarizer import DummyDiarizer
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

@@ -9,7 +9,7 @@ description = "Audio Pipeline and Acoustic Modeling"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "numpy>=2.0.0,<2.1.0",
+    "numpy>=2.2.2,<2.3",
     "scipy>=1.10.0",
     "pandas>=2.0.0",
     "pyarrow>=12.0.0",

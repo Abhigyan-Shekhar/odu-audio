@@ -11,7 +11,11 @@ from src.audio_pipeline.lexical.detectors import (
 )
 from src.audio_pipeline.lexical.language import identify_language
 from src.audio_pipeline.lexical.lexicon import ProfanityLexicon
-from src.audio_pipeline.lexical.normalization import looks_code_mixed, normalize_text, tokenize
+from src.audio_pipeline.lexical.normalization import (
+    looks_code_mixed,
+    normalize_text,
+    tokenize,
+)
 from src.audio_pipeline.lexical.toxicity import MuToxScorer
 from src.audio_pipeline.schemas.lexical_record import (
     LexicalFeatureRecord,
@@ -74,8 +78,8 @@ class LexicalFeatureExtractor:
         )
 
         recent_texts = [*self._history, normalized]
-        repeat_probability, repeats, repeated_request_probability = repetition_probability(
-            recent_texts
+        repeat_probability, repeats, repeated_request_probability = (
+            repetition_probability(recent_texts)
         )
         self._history.append(normalized)
 
@@ -84,7 +88,9 @@ class LexicalFeatureExtractor:
         imperative = imperative_probability(normalized)
         distress = distress_phrase_probability(normalized)
         mutox_text = self.toxicity_scorer.score_text(normalized)
-        toxicity = min(1.0, max(mutox_text, profanity_intensity, threat, directed_insult))
+        toxicity = min(
+            1.0, max(mutox_text, profanity_intensity, threat, directed_insult)
+        )
         weighted_toxicity = toxicity * confidence_weight
 
         flags: list[str] = []
@@ -104,8 +110,12 @@ class LexicalFeatureExtractor:
             window_end_ms=transcript.end_ms,
             transcript=transcript.text,
             normalized_transcript=normalized,
-            language=transcript.language if transcript.language != "unknown" else language,
-            language_probability=max(transcript.language_probability, language_probability),
+            language=(
+                transcript.language if transcript.language != "unknown" else language
+            ),
+            language_probability=max(
+                transcript.language_probability, language_probability
+            ),
             code_mixed=code_mixed,
             asr_confidence=transcript.avg_confidence,
             word_timestamps=transcript.words,

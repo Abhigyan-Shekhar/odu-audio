@@ -18,9 +18,9 @@ class WordTimestamp:
     def __post_init__(self):
         assert self.word, "word must not be empty"
         assert self.start_ms <= self.end_ms, "start_ms must be <= end_ms"
-        assert 0.0 <= self.confidence <= 1.0, (
-            f"confidence must be in [0, 1], got {self.confidence}"
-        )
+        assert (
+            0.0 <= self.confidence <= 1.0
+        ), f"confidence must be in [0, 1], got {self.confidence}"
 
 
 @dataclass
@@ -42,9 +42,9 @@ class TranscriptSegment:
 
     def __post_init__(self):
         assert self.start_ms <= self.end_ms, "start_ms must be <= end_ms"
-        assert 0.0 <= self.language_probability <= 1.0, (
-            "language_probability must be in [0, 1]"
-        )
+        assert (
+            0.0 <= self.language_probability <= 1.0
+        ), "language_probability must be in [0, 1]"
         assert 0.0 <= self.avg_confidence <= 1.0, "avg_confidence must be in [0, 1]"
 
 
@@ -89,9 +89,9 @@ class LexicalFeatureRecord:
     model_hashes: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self):
-        assert self.window_start_ms <= self.window_end_ms, (
-            "window_start_ms must be <= window_end_ms"
-        )
+        assert (
+            self.window_start_ms <= self.window_end_ms
+        ), "window_start_ms must be <= window_end_ms"
         assert self.profanity_count >= 0, "profanity_count must be non-negative"
 
         probability_fields = [
@@ -114,18 +114,20 @@ class LexicalFeatureRecord:
             assert 0.0 <= value <= 1.0, f"{field_name} must be in [0, 1]"
 
         if self.mutox_speech_score is not None:
-            assert 0.0 <= self.mutox_speech_score <= 1.0, (
-                "mutox_speech_score must be in [0, 1]"
-            )
+            assert (
+                0.0 <= self.mutox_speech_score <= 1.0
+            ), "mutox_speech_score must be in [0, 1]"
         if self.mutox_text_score is not None:
-            assert 0.0 <= self.mutox_text_score <= 1.0, (
-                "mutox_text_score must be in [0, 1]"
-            )
+            assert (
+                0.0 <= self.mutox_text_score <= 1.0
+            ), "mutox_text_score must be in [0, 1]"
 
     def to_dict(self) -> dict:
         """Convert to a serialization-friendly dictionary."""
         data = self.__dict__.copy()
-        data["word_timestamps"] = [word.__dict__.copy() for word in self.word_timestamps]
+        data["word_timestamps"] = [
+            word.__dict__.copy() for word in self.word_timestamps
+        ]
         return data
 
     @classmethod

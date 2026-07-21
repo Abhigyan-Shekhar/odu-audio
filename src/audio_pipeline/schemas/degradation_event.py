@@ -42,9 +42,9 @@ class DegradationEvent:
     stream_id: str
 
     def __post_init__(self):
-        assert 0 <= self.old_level <= 5, (
-            f"old_level must be in [0, 5], got {self.old_level}"
-        )
-        assert 0 <= self.new_level <= 5, (
-            f"new_level must be in [0, 5], got {self.new_level}"
-        )
+        assert (
+            0 <= self.old_level <= 5
+        ), f"old_level must be in [0, 5], got {self.old_level}"
+        assert (
+            0 <= self.new_level <= 5
+        ), f"new_level must be in [0, 5], got {self.new_level}"

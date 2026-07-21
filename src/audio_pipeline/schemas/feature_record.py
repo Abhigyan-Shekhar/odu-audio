@@ -98,34 +98,34 @@ class AcousticFeatureRecord:
         """Validate field constraints"""
         # Validate probabilities
         if self.patient_probability is not None:
-            assert 0.0 <= self.patient_probability <= 1.0, (
-                f"patient_probability must be in [0, 1], got {self.patient_probability}"
-            )
+            assert (
+                0.0 <= self.patient_probability <= 1.0
+            ), f"patient_probability must be in [0, 1], got {self.patient_probability}"
 
-        assert 0.0 <= self.voiced_ratio <= 1.0, (
-            f"voiced_ratio must be in [0, 1], got {self.voiced_ratio}"
-        )
+        assert (
+            0.0 <= self.voiced_ratio <= 1.0
+        ), f"voiced_ratio must be in [0, 1], got {self.voiced_ratio}"
 
-        assert 0.0 <= self.overlap_probability <= 1.0, (
-            f"overlap_probability must be in [0, 1], got {self.overlap_probability}"
-        )
+        assert (
+            0.0 <= self.overlap_probability <= 1.0
+        ), f"overlap_probability must be in [0, 1], got {self.overlap_probability}"
 
-        assert 0.0 <= self.clipping_ratio <= 1.0, (
-            f"clipping_ratio must be in [0, 1], got {self.clipping_ratio}"
-        )
+        assert (
+            0.0 <= self.clipping_ratio <= 1.0
+        ), f"clipping_ratio must be in [0, 1], got {self.clipping_ratio}"
 
-        assert 0.0 <= self.dropout_ratio <= 1.0, (
-            f"dropout_ratio must be in [0, 1], got {self.dropout_ratio}"
-        )
+        assert (
+            0.0 <= self.dropout_ratio <= 1.0
+        ), f"dropout_ratio must be in [0, 1], got {self.dropout_ratio}"
 
         # Validate temporal ordering
-        assert self.window_start_ms <= self.window_end_ms, (
-            "window_start_ms must be <= window_end_ms"
-        )
+        assert (
+            self.window_start_ms <= self.window_end_ms
+        ), "window_start_ms must be <= window_end_ms"
 
-        assert self.source_start_sample <= self.source_end_sample, (
-            "source_start_sample must be <= source_end_sample"
-        )
+        assert (
+            self.source_start_sample <= self.source_end_sample
+        ), "source_start_sample must be <= source_end_sample"
 
         # Validate attribution_status
         valid_statuses = {
@@ -135,9 +135,9 @@ class AcousticFeatureRecord:
             "OVERLAP",
             "LOW_CONFIDENCE",
         }
-        assert self.attribution_status in valid_statuses, (
-            f"attribution_status must be one of {valid_statuses}, got {self.attribution_status}"
-        )
+        assert (
+            self.attribution_status in valid_statuses
+        ), f"attribution_status must be one of {valid_statuses}, got {self.attribution_status}"
 
         # Validate quality_status
         valid_quality = {
@@ -149,15 +149,15 @@ class AcousticFeatureRecord:
             "INSUFFICIENT_AUDIO",
             "UNKNOWN",
         }
-        assert self.quality_status in valid_quality, (
-            f"quality_status must be one of {valid_quality}, got {self.quality_status}"
-        )
+        assert (
+            self.quality_status in valid_quality
+        ), f"quality_status must be one of {valid_quality}, got {self.quality_status}"
 
         # Validate eGeMAPSv02 dimension
         if self.egemaps is not None:
-            assert len(self.egemaps) == 88, (
-                f"eGeMAPSv02 must have 88 functionals, got {len(self.egemaps)}"
-            )
+            assert (
+                len(self.egemaps) == 88
+            ), f"eGeMAPSv02 must have 88 functionals, got {len(self.egemaps)}"
 
     def to_dict(self) -> dict:
         """Convert to dictionary for serialization"""

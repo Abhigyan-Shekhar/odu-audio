@@ -10,7 +10,11 @@ from .schemas.audio_frame import AudioFrame
 from .schemas.degradation_event import DegradationEvent
 from .schemas.error_event import ErrorEvent
 from .schemas.feature_record import AcousticFeatureRecord, DropReason
-from .schemas.lexical_record import LexicalFeatureRecord, TranscriptSegment, WordTimestamp
+from .schemas.lexical_record import (
+    LexicalFeatureRecord,
+    TranscriptSegment,
+    WordTimestamp,
+)
 from .schemas.segment import SpeechSegment
 from .schemas.speaker_attribution import (
     AttributionMethod,
@@ -21,7 +25,10 @@ from .schemas.speaker_attribution import (
 
 _LAZY_EXPORTS = {
     "AudioPipeline": ("src.audio_pipeline.pipeline", "AudioPipeline"),
-    "StreamProcessor": ("src.audio_pipeline.runtime.stream_processor", "StreamProcessor"),
+    "StreamProcessor": (
+        "src.audio_pipeline.runtime.stream_processor",
+        "StreamProcessor",
+    ),
     "DatasetBuilder": ("src.audio_pipeline.offline.dataset_builder", "DatasetBuilder"),
     "WavToParquetConverter": (
         "src.audio_pipeline.offline.wav_to_parquet",
@@ -31,7 +38,10 @@ _LAZY_EXPORTS = {
     "SileroVAD": ("src.audio_pipeline.segmentation.silero_vad", "SileroVAD"),
     "DummyVAD": ("src.audio_pipeline.segmentation.dummy_vad", "DummyVAD"),
     "Endpointer": ("src.audio_pipeline.segmentation.endpointer", "Endpointer"),
-    "FeatureExtractor": ("src.audio_pipeline.features.feature_extractor", "FeatureExtractor"),
+    "FeatureExtractor": (
+        "src.audio_pipeline.features.feature_extractor",
+        "FeatureExtractor",
+    ),
     "OpenSmileExtractor": (
         "src.audio_pipeline.features.opensmile_extractor",
         "OpenSmileExtractor",
@@ -75,6 +85,7 @@ def __getattr__(name: str):
     value = getattr(module, attribute)
     globals()[name] = value
     return value
+
 
 __all__ = [
     "AudioPipeline",

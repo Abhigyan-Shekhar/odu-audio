@@ -52,6 +52,8 @@ class ErrorEvent:
     """Additional context."""
 
     def __post_init__(self):
-        assert self.severity in {"ERROR", "WARNING", "CRITICAL"}, (
-            f"severity must be ERROR, WARNING, or CRITICAL, got {self.severity}"
-        )
+        assert self.severity in {
+            "ERROR",
+            "WARNING",
+            "CRITICAL",
+        }, f"severity must be ERROR, WARNING, or CRITICAL, got {self.severity}"

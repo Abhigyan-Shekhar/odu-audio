@@ -197,7 +197,9 @@ class WavToParquetConverter:
                     f"{len(diarization_result.turns)} turns."
                 )
             except Exception as e:
-                logger.error(f"Diarization failed: {e}. Continuing without speaker turns.")
+                logger.error(
+                    f"Diarization failed: {e}. Continuing without speaker turns."
+                )
                 diarization_result = None
 
         # ----------------------------------------------------------------
@@ -210,7 +212,9 @@ class WavToParquetConverter:
                 vad_frames = run_vad_frames(mono, self._vad)
                 logger.info(f"VAD complete: {len(vad_frames)} frames processed.")
             except Exception as e:
-                logger.error(f"VAD failed: {e}. Continuing with placeholder probabilities.")
+                logger.error(
+                    f"VAD failed: {e}. Continuing with placeholder probabilities."
+                )
                 vad_frames = []
 
         # ----------------------------------------------------------------
@@ -231,8 +235,12 @@ class WavToParquetConverter:
 
         for window in windows:
             # --- Quality metrics ---
-            clipping_ratio = detect_clipping(window.samples, threshold=self.clipping_threshold)
-            dropout_ratio = detect_dropout(window.samples, threshold=self.dropout_zero_threshold)
+            clipping_ratio = detect_clipping(
+                window.samples, threshold=self.clipping_threshold
+            )
+            dropout_ratio = detect_dropout(
+                window.samples, threshold=self.dropout_zero_threshold
+            )
             snr_db = estimate_snr(window.samples, sample_rate=TARGET_SR)
 
             if clipping_ratio >= self.clipping_max_ratio:
@@ -268,8 +276,10 @@ class WavToParquetConverter:
                     )
 
             # --- Diarization window mapping ---
-            speaker_id, attribution_status, overlap_prob = self._map_diarization_to_window(
-                diarization_result, window.start_time_ms, window.end_time_ms
+            speaker_id, attribution_status, overlap_prob = (
+                self._map_diarization_to_window(
+                    diarization_result, window.start_time_ms, window.end_time_ms
+                )
             )
 
             # --- Source sample mapping (back to original SR) ---
@@ -284,15 +294,15 @@ class WavToParquetConverter:
                 source_start_sample=source_start,
                 source_end_sample=source_end,
                 speaker_id=speaker_id,
-                patient_probability=None,          # Pyannote doesn't identify the patient
+                patient_probability=None,  # Pyannote doesn't identify the patient
                 attribution_status=attribution_status,
                 attribution_method=None,
                 vad_probability_mean=vad_prob_mean,
                 voiced_ratio=voiced_ratio,
                 overlap_probability=overlap_prob,
-                egemaps=None,                       # openSMILE not wired in this phase
+                egemaps=None,  # openSMILE not wired in this phase
                 yamnet_event_scores=yamnet_scores,
-                emotion_embedding=None,             # emotion2vec not wired in this phase
+                emotion_embedding=None,  # emotion2vec not wired in this phase
                 snr_db=snr_db,
                 clipping_ratio=clipping_ratio,
                 dropout_ratio=dropout_ratio,
@@ -401,9 +411,7 @@ class WavToParquetConverter:
         # Overlap probability: total clipped speech beyond one window duration
         total_speech_ms = sum(durations.values())
         if window_dur_ms > 0 and total_speech_ms > window_dur_ms:
-            overlap_prob = min(
-                1.0, (total_speech_ms - window_dur_ms) / window_dur_ms
-            )
+            overlap_prob = min(1.0, (total_speech_ms - window_dur_ms) / window_dur_ms)
         else:
             overlap_prob = 0.0
 
@@ -468,12 +476,23 @@ class WavToParquetConverter:
             }
             for s in segments
         ]
-        df = pd.DataFrame(rows) if rows else pd.DataFrame(
-            columns=[
-                "session_id", "stream_id", "start_ms", "end_ms",
-                "start_sample", "end_sample", "duration_ms",
-                "vad_probability_mean", "vad_probability_min", "provisional",
-            ]
+        df = (
+            pd.DataFrame(rows)
+            if rows
+            else pd.DataFrame(
+                columns=[
+                    "session_id",
+                    "stream_id",
+                    "start_ms",
+                    "end_ms",
+                    "start_sample",
+                    "end_sample",
+                    "duration_ms",
+                    "vad_probability_mean",
+                    "vad_probability_min",
+                    "provisional",
+                ]
+            )
         )
         self._atomic_parquet(df, os.path.join(output_dir, "speech_segments.parquet"))
 
@@ -494,11 +513,20 @@ class WavToParquetConverter:
                         "diarizer_version": result.diarizer_version,
                     }
                 )
-        df = pd.DataFrame(rows) if rows else pd.DataFrame(
-            columns=[
-                "start_ms", "end_ms", "duration_ms", "speaker_id",
-                "overlap", "confidence", "diarizer_version",
-            ]
+        df = (
+            pd.DataFrame(rows)
+            if rows
+            else pd.DataFrame(
+                columns=[
+                    "start_ms",
+                    "end_ms",
+                    "duration_ms",
+                    "speaker_id",
+                    "overlap",
+                    "confidence",
+                    "diarizer_version",
+                ]
+            )
         )
         self._atomic_parquet(df, os.path.join(output_dir, "speaker_turns.parquet"))
 
@@ -529,7 +557,9 @@ class WavToParquetConverter:
             "config_hash": config_hash,
             "models": {
                 "vad": self._vad.get_version() if self._vad is not None else None,
-                "yamnet": self._yamnet.get_version() if self._yamnet is not None else None,
+                "yamnet": (
+                    self._yamnet.get_version() if self._yamnet is not None else None
+                ),
                 "diarizer": (
                     self._diarizer.get_version() if self._diarizer is not None else None
                 ),
@@ -538,7 +568,9 @@ class WavToParquetConverter:
             "processing_status": "complete",
             "warnings": [],
         }
-        self._atomic_json(metadata, os.path.join(output_dir, "extraction_metadata.json"))
+        self._atomic_json(
+            metadata, os.path.join(output_dir, "extraction_metadata.json")
+        )
 
     # ------------------------------------------------------------------
     # Helpers

@@ -100,12 +100,14 @@ def wav_to_parquet(
         if enable_vad:
             click.echo("Loading Silero VAD...")
             from src.audio_pipeline.segmentation.silero_vad import SileroVAD
+
             vad = SileroVAD()
             click.echo("  ✓ Silero VAD loaded.")
 
         if enable_yamnet:
             click.echo("Loading YAMNet ONNX detector (downloads on first run)...")
             from src.audio_pipeline.features.yamnet_detector import YAMNetDetector
+
             yamnet = YAMNetDetector()
             click.echo("  ✓ YAMNet loaded.")
 
@@ -120,6 +122,7 @@ def wav_to_parquet(
                 sys.exit(1)
             click.echo("Loading Pyannote diarizer...")
             from src.audio_pipeline.speakers.pyannote_diarizer import PyannoteDiarizer
+
             diarizer = PyannoteDiarizer(hf_token=token)
             click.echo("  ✓ Pyannote diarizer loaded.")
 

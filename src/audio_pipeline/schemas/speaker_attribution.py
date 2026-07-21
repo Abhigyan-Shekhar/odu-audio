@@ -73,18 +73,18 @@ class SpeakerAttribution:
 
     def __post_init__(self):
         """Validate field constraints"""
-        assert 0.0 <= self.patient_probability <= 1.0, (
-            f"patient_probability must be in [0, 1], got {self.patient_probability}"
-        )
+        assert (
+            0.0 <= self.patient_probability <= 1.0
+        ), f"patient_probability must be in [0, 1], got {self.patient_probability}"
 
         if self.confidence_factors is None:
             self.confidence_factors = {}
 
         # Validate embedding distance if provided
         if self.embedding_distance is not None:
-            assert self.embedding_distance >= 0.0, (
-                f"embedding_distance must be >= 0, got {self.embedding_distance}"
-            )
+            assert (
+                self.embedding_distance >= 0.0
+            ), f"embedding_distance must be >= 0, got {self.embedding_distance}"
 
     def is_patient(self, threshold: float = 0.5) -> bool:
         """
@@ -212,16 +212,16 @@ class EnrollmentConfig:
             assert self.duration_seconds > 0, "duration_seconds must be positive"
 
         if self.method == AttributionMethod.CHANNEL_ASSIGNMENT:
-            assert self.channel_index is not None, (
-                "channel_index required for channel_assignment"
-            )
+            assert (
+                self.channel_index is not None
+            ), "channel_index required for channel_assignment"
             assert self.channel_index >= 0, "channel_index must be non-negative"
 
         if self.method == AttributionMethod.EMBEDDING_MATCH:
-            assert self.reference_embedding_id is not None, (
-                "reference_embedding_id required for embedding_match"
-            )
+            assert (
+                self.reference_embedding_id is not None
+            ), "reference_embedding_id required for embedding_match"
 
-        assert 0.0 < self.confidence_threshold <= 1.0, (
-            "confidence_threshold must be in (0, 1]"
-        )
+        assert (
+            0.0 < self.confidence_threshold <= 1.0
+        ), "confidence_threshold must be in (0, 1]"

@@ -16,7 +16,9 @@ class ASRProfanityCase:
     language: str
 
 
-def asr_profanity_miss_rates(cases: list[ASRProfanityCase]) -> dict[str, dict[str, float]]:
+def asr_profanity_miss_rates(
+    cases: list[ASRProfanityCase],
+) -> dict[str, dict[str, float]]:
     """
     Measure whether ASR misses incomplete, shouted, or code-mixed profanity.
 
@@ -28,12 +30,10 @@ def asr_profanity_miss_rates(cases: list[ASRProfanityCase]) -> dict[str, dict[st
 
     metrics: dict[str, dict[str, float]] = {}
     for condition, condition_cases in grouped.items():
-        positive = [case for case in condition_cases if case.reference_contains_profanity]
-        misses = [
-            case
-            for case in positive
-            if not case.predicted_contains_profanity
+        positive = [
+            case for case in condition_cases if case.reference_contains_profanity
         ]
+        misses = [case for case in positive if not case.predicted_contains_profanity]
         mean_confidence = (
             sum(case.asr_confidence for case in condition_cases) / len(condition_cases)
             if condition_cases
@@ -49,7 +49,9 @@ def asr_profanity_miss_rates(cases: list[ASRProfanityCase]) -> dict[str, dict[st
     return metrics
 
 
-def binary_feature_metrics(y_true: list[int], y_score: list[float], threshold: float = 0.5) -> dict[str, float]:
+def binary_feature_metrics(
+    y_true: list[int], y_score: list[float], threshold: float = 0.5
+) -> dict[str, float]:
     """Small dependency-free binary metrics for lexical branch evaluation."""
     if len(y_true) != len(y_score):
         raise ValueError("y_true and y_score must have the same length")

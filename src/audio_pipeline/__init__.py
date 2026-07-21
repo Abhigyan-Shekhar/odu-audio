@@ -28,6 +28,10 @@ from .segmentation.dummy_vad import DummyVAD
 from .segmentation.endpointer import Endpointer
 from .segmentation.silero_vad import SileroVAD
 from .segmentation.vad_interface import VADInterface
+from .speakers.attribution import SpeakerAttributor
+from .speakers.diarizer_interface import DiarizedTurn, DiarizationResult, DiarizeriInterface
+from .speakers.dummy_diarizer import DummyDiarizer
+from .speakers.enrollment import SessionEnrollment
 
 __all__ = [
     "AudioPipeline",
@@ -51,4 +55,10 @@ __all__ = [
     "FeatureExtractor",
     "OpenSmileExtractor",
     "YAMNetDetector",
+    "DiarizeriInterface",
+    "DiarizationResult",
+    "DiarizedTurn",
+    "DummyDiarizer",
+    "SessionEnrollment",
+    "SpeakerAttributor",
 ]

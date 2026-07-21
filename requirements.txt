@@ -43,6 +43,12 @@ onnxruntime==1.27.0
 opensmile>=2.5.0  # eGeMAPS
 pandas>=2.0.0
 protobuf==7.35.1
+pyannote-audio==4.0.7
+pyannote-core==6.0.1
+pyannote-database==6.1.1
+pyannote-metrics==4.1
+pyannote-pipeline==4.0.0
+pyannoteai-sdk==0.4.0
 pyarrow>=12.0.0  # for parquet
 python-dotenv>=1.0.0
 pyyaml>=6.0

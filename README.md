@@ -89,6 +89,12 @@ The following modules are fully implemented inside `src/audio_pipeline/`:
   - `feature_extractor.py`: Interface for high-level acoustic extractors.
   - `opensmile_extractor.py`: openSMILE driver for 88 eGeMAPSv02 functionals with ThreadPoolExecutor timeout protection.
   - `yamnet_detector.py`: YAMNet distress event detector using ONNX Runtime. Runs on the full audio stream (in parallel to VAD) to detect screams, crying, gasps, wheezes, and other distress sounds. Auto-downloads and caches the `yamnet.onnx` model and Audioset class map to `~/.cache/yamnet/`.
+* **`src/audio_pipeline/speakers/`**:
+  - `diarizer_interface.py`: Abstract `DiarizeriInterface` and `DiarizationResult` / `DiarizedTurn` schemas.
+  - `dummy_diarizer.py`: Mock diarizer for deterministic offline testing (single speaker / overlap / no-speech modes).
+  - `pyannote_diarizer.py`: Full pyannote.audio 3.x diarization backend accepting in-memory waveform tensors (requires HF token).
+  - `enrollment.py`: `SessionEnrollment` — enrolls patient speaker embedding at session start, computes cosine similarity. Embeddings are in-memory only (never persisted).
+  - `attribution.py`: `SpeakerAttributor` — 8-step decision logic; ambiguous/overlapping speech always produces `UNKNOWN`/`OVERLAP`, never forced `PATIENT`.
 * **`src/audio_pipeline/schemas/`**:
   - `feature_record.py` / `speaker_attribution.py`: Validated data structures representing the streaming pipelines' output.
 
@@ -116,7 +122,7 @@ graph TD
 * `[x]` **Milestone 3**: VAD & Stable Endpointing (Week 6)
 * `[x]` **Milestone 4**: eGeMAPS Feature Extraction (Week 7)
 * `[x]` **Milestone 5**: YAMNet Event Detection (Weeks 8-9)
-* `[ ]` **Milestone 6**: Diarization & Attribution (Weeks 10-12)
+* `[x]` **Milestone 6**: Diarization & Attribution (Weeks 10-12)
 * `[ ]` **Milestone 7**: Graceful Degradation Validation (Week 13)
 * `[ ]` **Milestone 8**: Training Pipeline Baselines (Weeks 14-16)
 

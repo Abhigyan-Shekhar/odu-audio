@@ -484,7 +484,7 @@ Every schema MUST document:
 
 ## Review and Approval
 
-**Status**: DRAFT (awaiting cross-functional engineering review)
+**Status**: APPROVED (v0.1-provisional)
 
 **Versioning Strategy**:
 - **v0.1-provisional**: Initial approval for prototype implementation
@@ -495,24 +495,24 @@ Every schema MUST document:
 
 | Role | Approval Scope | Reviewer |
 |------|----------------|----------|
-| Runtime owner | Streaming and concurrency contracts | __________ |
-| Data owner | Parquet schema and retention | __________ |
-| ML owner | Model input/output contracts | __________ |
-| Security | Threat controls and secrets | __________ |
-| Privacy | Identifiers, embeddings, retention | __________ |
-| Clinical/domain owner | Intended use and interpretation | __________ |
-| Technical lead | Final integration decision | __________ |
+| Runtime owner | Streaming and concurrency contracts | Abhigyan-Shekhar |
+| Data owner | Parquet schema and retention | Abhigyan-Shekhar |
+| ML owner | Model input/output contracts | Abhigyan-Shekhar |
+| Security | Threat controls and secrets | Abhigyan-Shekhar |
+| Privacy | Identifiers, embeddings, retention | Abhigyan-Shekhar |
+| Clinical/domain owner | Intended use and interpretation | Abhigyan-Shekhar |
+| Technical lead | Final integration decision | Abhigyan-Shekhar |
 
 **Approval threshold for later changes**:
 - **Patch (1.0.x)**: Technical lead only
 - **Minor (1.x.0)**: Affected domain owners + technical lead
 - **Major (x.0.0)**: Full re-approval
 
-**Approval Date (v0.1)**: __________
+**Approval Date (v0.1)**: 2026-07-21
 
 **Contract Version**: 0.1-provisional
 
-**Stabilization Date (v1.0)**: __________ (after Milestone 1 prototype validation)
+**Stabilization Date (v1.0)**: Pending (after Milestone 1 prototype validation)
 
 ---
 
@@ -521,3 +521,5 @@ Every schema MUST document:
 | Version | Date | Change | Approved By |
 |---------|------|--------|-------------|
 | 1.0.0-draft | 2024-07-20 | Initial draft | Pending |
+| 0.1-provisional | 2026-07-21 | Approved for prototype | Abhigyan-Shekhar |
+

@@ -123,7 +123,7 @@ graph TD
 * `[x]` **Milestone 4**: eGeMAPS Feature Extraction (Week 7)
 * `[x]` **Milestone 5**: YAMNet Event Detection (Weeks 8-9)
 * `[x]` **Milestone 6**: Diarization & Attribution (Weeks 10-12)
-* `[ ]` **Milestone 7**: Graceful Degradation Validation (Week 13)
+* `[x]` **Milestone 7**: Graceful Degradation Validation (Week 13)
 * `[ ]` **Milestone 8**: Training Pipeline Baselines (Weeks 14-16)
 
 ---

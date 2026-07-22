@@ -37,8 +37,8 @@ flatbuffers==25.12.19
 huggingface-hub>=0.16.0
 librosa>=0.10.0
 lightgbm>=4.0.0
-numpy>=1.24.0,<2.0.0
-onnxruntime==1.27.0
+numpy>=2.2.2,<2.3
+onnxruntime>=1.16.0,<1.24
 opensmile>=2.5.0  # eGeMAPS
 pandas>=2.0.0
 protobuf==7.35.1
@@ -62,3 +62,7 @@ torch>=2.0.0
 torchaudio>=2.0.0
 tqdm>=4.65.0
 typing-extensions>=4.7.0
+
+# Person 2 Lexical / ASR
+# faster-whisper>=1.0.0  # optional ASR backend for Person 2 lexical branch
+# seamless-communication  # optional MuTox backend; install per upstream instructions

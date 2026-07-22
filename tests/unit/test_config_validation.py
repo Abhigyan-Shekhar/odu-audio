@@ -34,9 +34,9 @@ def test_load_and_validate_default_yaml():
         "logging",
     ]
     for section in expected_sections:
-        assert section in config, (
-            f"Missing section '{section}' in default configuration"
-        )
+        assert (
+            section in config
+        ), f"Missing section '{section}' in default configuration"
 
     # Validate capture properties
     assert config["capture"]["sample_rate"] == 16000

@@ -42,15 +42,15 @@ class SpeechSegment:
 
     def __post_init__(self):
         assert self.start_ms <= self.end_ms, "start_ms must be <= end_ms"
-        assert self.start_sample <= self.end_sample, (
-            "start_sample must be <= end_sample"
-        )
-        assert 0.0 <= self.vad_probability_mean <= 1.0, (
-            f"vad_probability_mean must be in [0, 1], got {self.vad_probability_mean}"
-        )
-        assert 0.0 <= self.vad_probability_min <= 1.0, (
-            f"vad_probability_min must be in [0, 1], got {self.vad_probability_min}"
-        )
+        assert (
+            self.start_sample <= self.end_sample
+        ), "start_sample must be <= end_sample"
+        assert (
+            0.0 <= self.vad_probability_mean <= 1.0
+        ), f"vad_probability_mean must be in [0, 1], got {self.vad_probability_mean}"
+        assert (
+            0.0 <= self.vad_probability_min <= 1.0
+        ), f"vad_probability_min must be in [0, 1], got {self.vad_probability_min}"
 
     @property
     def duration_ms(self) -> int:

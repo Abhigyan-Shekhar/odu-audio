@@ -2,6 +2,8 @@
 Simulate background noise for training data.
 """
 
+from typing import cast
+
 import numpy as np
 
 
@@ -58,4 +60,4 @@ class NoiseAugmenter:
 
         # Ensure we don't exceed [-1.0, 1.0] bounds if original was normalized
         # We use soft clipping or hard clipping depending on preference. Here, simple hard clipping:
-        return np.clip(augmented, -1.0, 1.0).astype(np.float32)
+        return cast(np.ndarray, np.clip(augmented, -1.0, 1.0).astype(np.float32))

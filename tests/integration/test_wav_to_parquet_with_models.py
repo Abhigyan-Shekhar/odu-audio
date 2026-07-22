@@ -25,7 +25,6 @@ from src.audio_pipeline.offline.wav_to_parquet import WavToParquetConverter
 from src.audio_pipeline.segmentation.dummy_vad import DummyVAD
 from src.audio_pipeline.speakers.dummy_diarizer import DummyDiarizer
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -105,7 +104,9 @@ def test_vad_fields_populated(temp_dir):
     output_dir, _ = run_with_dummies(temp_dir, vad_prob=0.8)
     df = pd.read_parquet(os.path.join(output_dir, "acoustic_features.parquet"))
 
-    assert df["vad_probability_mean"].iloc[0] > 0.0, "Expected non-zero vad_probability_mean"
+    assert (
+        df["vad_probability_mean"].iloc[0] > 0.0
+    ), "Expected non-zero vad_probability_mean"
     assert df["voiced_ratio"].iloc[0] > 0.0, "Expected non-zero voiced_ratio"
 
 
@@ -150,12 +151,18 @@ def test_diarization_speaker_mapped(temp_dir):
     output_dir, _ = run_with_dummies(temp_dir)
     df = pd.read_parquet(os.path.join(output_dir, "acoustic_features.parquet"))
 
-    assert (df["speaker_id"] == "SPEAKER_00").all(), "Expected SPEAKER_00 for all windows"
+    assert (
+        df["speaker_id"] == "SPEAKER_00"
+    ).all(), "Expected SPEAKER_00 for all windows"
     # Patient attribution must never be set by diarization alone
-    assert (df["attribution_status"] == "UNKNOWN").all(), (
+    assert (
+        df["attribution_status"] == "UNKNOWN"
+    ).all(), (
         "attribution_status must remain UNKNOWN — diarizer doesn't identify the patient"
     )
-    assert df["patient_probability"].isna().all(), "patient_probability must be None/NaN"
+    assert (
+        df["patient_probability"].isna().all()
+    ), "patient_probability must be None/NaN"
 
 
 def test_no_speaker_window(temp_dir):
@@ -163,7 +170,9 @@ def test_no_speaker_window(temp_dir):
     output_dir, _ = run_with_dummies(temp_dir, simulate_no_speech=True)
     df = pd.read_parquet(os.path.join(output_dir, "acoustic_features.parquet"))
 
-    assert df["speaker_id"].isna().all(), "Expected None speaker_id when diarizer finds no speech"
+    assert (
+        df["speaker_id"].isna().all()
+    ), "Expected None speaker_id when diarizer finds no speech"
     assert (df["attribution_status"] == "UNKNOWN").all()
 
 
@@ -173,9 +182,9 @@ def test_overlap_detected(temp_dir):
     df = pd.read_parquet(os.path.join(output_dir, "acoustic_features.parquet"))
 
     # At least some windows should have OVERLAP status
-    assert (df["attribution_status"] == "OVERLAP").any(), (
-        "Expected at least one OVERLAP window when diarizer simulates simultaneous speakers"
-    )
+    assert (
+        df["attribution_status"] == "OVERLAP"
+    ).any(), "Expected at least one OVERLAP window when diarizer simulates simultaneous speakers"
     assert (df["overlap_probability"] > 0.0).any()
 
 
@@ -199,9 +208,9 @@ def test_no_patient_attribution_without_enrollment(temp_dir):
     """Pyannote labels (SPEAKER_00 etc.) must never produce PATIENT status."""
     output_dir, _ = run_with_dummies(temp_dir)
     df = pd.read_parquet(os.path.join(output_dir, "acoustic_features.parquet"))
-    assert "PATIENT" not in df["attribution_status"].values, (
-        "PATIENT status must not appear from diarization alone — requires enrollment"
-    )
+    assert (
+        "PATIENT" not in df["attribution_status"].values
+    ), "PATIENT status must not appear from diarization alone — requires enrollment"
 
 
 # ---------------------------------------------------------------------------
@@ -215,20 +224,29 @@ def test_speech_segments_schema(temp_dir):
     df = pd.read_parquet(os.path.join(output_dir, "speech_segments.parquet"))
 
     required_cols = {
-        "session_id", "stream_id", "start_ms", "end_ms",
-        "start_sample", "end_sample", "duration_ms",
-        "vad_probability_mean", "vad_probability_min", "provisional",
+        "session_id",
+        "stream_id",
+        "start_ms",
+        "end_ms",
+        "start_sample",
+        "end_sample",
+        "duration_ms",
+        "vad_probability_mean",
+        "vad_probability_min",
+        "provisional",
     }
-    assert required_cols.issubset(set(df.columns)), (
-        f"Missing columns: {required_cols - set(df.columns)}"
-    )
+    assert required_cols.issubset(
+        set(df.columns)
+    ), f"Missing columns: {required_cols - set(df.columns)}"
 
 
 def test_speech_segments_populated_when_vad_active(temp_dir):
     """When DummyVAD returns high probability, at least one speech segment must appear."""
     output_dir, _ = run_with_dummies(temp_dir, duration=5.0, vad_prob=0.9)
     df = pd.read_parquet(os.path.join(output_dir, "speech_segments.parquet"))
-    assert len(df) >= 1, "Expected at least one speech segment when VAD probability is high"
+    assert (
+        len(df) >= 1
+    ), "Expected at least one speech segment when VAD probability is high"
 
 
 def test_speech_segments_empty_when_vad_silent(temp_dir):
@@ -258,12 +276,17 @@ def test_speaker_turns_schema(temp_dir):
     df = pd.read_parquet(os.path.join(output_dir, "speaker_turns.parquet"))
 
     required_cols = {
-        "start_ms", "end_ms", "duration_ms", "speaker_id",
-        "overlap", "confidence", "diarizer_version",
+        "start_ms",
+        "end_ms",
+        "duration_ms",
+        "speaker_id",
+        "overlap",
+        "confidence",
+        "diarizer_version",
     }
-    assert required_cols.issubset(set(df.columns)), (
-        f"Missing columns: {required_cols - set(df.columns)}"
-    )
+    assert required_cols.issubset(
+        set(df.columns)
+    ), f"Missing columns: {required_cols - set(df.columns)}"
 
 
 def test_speaker_turns_populated(temp_dir):
@@ -309,13 +332,19 @@ def test_extraction_metadata_schema(temp_dir):
         meta = json.load(f)
 
     required_keys = {
-        "session_id", "stream_id", "input_file", "input_file_sha256",
-        "normalized_sample_rate", "duration_seconds", "config_hash",
-        "models", "processing_status",
+        "session_id",
+        "stream_id",
+        "input_file",
+        "input_file_sha256",
+        "normalized_sample_rate",
+        "duration_seconds",
+        "config_hash",
+        "models",
+        "processing_status",
     }
-    assert required_keys.issubset(set(meta.keys())), (
-        f"Missing keys: {required_keys - set(meta.keys())}"
-    )
+    assert required_keys.issubset(
+        set(meta.keys())
+    ), f"Missing keys: {required_keys - set(meta.keys())}"
 
 
 def test_extraction_metadata_models_versions(temp_dir):

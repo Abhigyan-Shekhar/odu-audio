@@ -1,0 +1,27 @@
+# Phase 2 temporal fusion configuration.
+sequence:
+  sequence_length: 30
+  stride: 1
+  tick_ms: 1000
+  require_consecutive_ticks: true
+
+split:
+  validation_size: 0.2
+  test_size: 0.1
+  random_state: 42
+  group_by: subject_id
+
+model:
+  hidden_dim: 64
+  num_layers: 1
+  dropout: 0.1
+
+training:
+  learning_rate: 0.001
+  batch_size: 16
+  epochs: 10
+  random_seed: 42
+  class_balanced_loss: true
+  balanced_sampler: false
+  threshold: 0.5
+  device: cpu

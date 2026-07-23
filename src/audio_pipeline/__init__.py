@@ -22,6 +22,7 @@ from .schemas.speaker_attribution import (
     EnrollmentConfig,
     SpeakerAttribution,
 )
+from .schemas.unified_feature import UnifiedFeatureRecord
 
 _LAZY_EXPORTS = {
     "AudioPipeline": ("src.audio_pipeline.pipeline", "AudioPipeline"),
@@ -101,6 +102,7 @@ __all__ = [
     "AcousticFeatureRecord",
     "DropReason",
     "LexicalFeatureRecord",
+    "UnifiedFeatureRecord",
     "TranscriptSegment",
     "WordTimestamp",
     "ErrorEvent",
